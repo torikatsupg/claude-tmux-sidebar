@@ -32,7 +32,10 @@ detail=""
 case "$event" in
   SessionStart)              state="${prev_state:-idle}" ;;
   UserPromptSubmit)          state="running" ;;
-  PreToolUse|PostToolUse)    state="running"; detail="$tool" ;;
+  # AskUserQuestion blocks on the user like an approval prompt.
+  PreToolUse)
+    if [ "$tool" = "AskUserQuestion" ]; then state="waiting"; detail="Question"; else state="running"; detail="$tool"; fi ;;
+  PostToolUse)               state="running"; detail="$tool" ;;
   PermissionRequest)         state="waiting"; detail="$tool" ;;
   Notification)
     case "$ntype" in

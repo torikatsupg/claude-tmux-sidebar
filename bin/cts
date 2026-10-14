@@ -4,6 +4,7 @@
 #   cts ensure [win]    add the sidebar to a window if enabled and missing (tmux hooks)
 #   cts fix-width [win] restore the sidebar width after a layout change (tmux hooks)
 #   cts popup [pane]    show the list in a popup instead (pane: where it was opened from)
+#   cts next|prev [pane] [client]  go to the next / previous done or waiting Claude
 
 set -u
 BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -66,6 +67,7 @@ case "${1:-}" in
   off)       tmux set -g @cts_enabled off; close_all ;;
   ensure)    ensure "${2:-}" ;;
   fix-width) fix_width "${2:-}" ;;
+  next|prev) exec "$SIDEBAR" --jump "$1" "${2:-}" "${3:-}" ;;
   popup)     tmux display-popup -E -w "$(( $(width) + 6 ))" -h 80% -T ' Claude ' "CTS_ORIGIN_PANE='${2:-}' '$SIDEBAR' --popup" ;;
-  *) echo "usage: cts {toggle|on|off|ensure|fix-width|popup}" >&2; exit 1 ;;
+  *) echo "usage: cts {toggle|on|off|ensure|fix-width|popup|next|prev}" >&2; exit 1 ;;
 esac
