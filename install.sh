@@ -39,7 +39,7 @@ if [ "${1:-}" = "--uninstall" ]; then
     "$REPO/bin/cts" off
     idx=$(tmux show -gqv @cts_hook_index); idx=${idx:-77}
     for h in after-new-window after-new-session session-window-changed client-session-changed window-layout-changed client-resized; do
-      tmux set-hook -gu "$h[$idx]" 2>/dev/null || true
+      tmux set-hook -gu "${h}[$idx]" 2>/dev/null || true
     done
   fi
   echo "uninstalled (tmux key bindings remain until the tmux server restarts)"
