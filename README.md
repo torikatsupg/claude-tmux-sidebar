@@ -35,7 +35,7 @@ With [TPM](https://github.com/tmux-plugins/tpm), add to `~/.tmux.conf`, then pre
 set -g @plugin 'torikatsupg/claude-tmux-sidebar'
 ```
 
-To pin a release, use `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.1.1'`.
+To pin a release, use `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.1.2'`.
 
 ### 2. Claude Code hooks
 
