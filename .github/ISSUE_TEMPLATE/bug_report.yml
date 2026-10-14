@@ -1,0 +1,50 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: tmux
+    attributes:
+      label: tmux version
+      placeholder: tmux 3.4
+    validations:
+      required: true
+  - type: input
+    id: claude
+    attributes:
+      label: Claude Code version
+      placeholder: claude --version
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: macOS 14 / Ubuntu 24.04
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Install method
+      options:
+        - TPM + Claude Code plugin
+        - TPM + install.sh --hooks-only
+        - install.sh
+    validations:
+      required: true
+  - type: textarea
+    id: debug
+    attributes:
+      label: Hook payloads (optional)
+      description: |
+        Start Claude with `CTS_DEBUG=1` and attach the relevant lines of `~/.cache/claude-tmux-sidebar/debug.log`.
+        The log contains your prompts and tool inputs — remove anything private before pasting.
+      render: json
