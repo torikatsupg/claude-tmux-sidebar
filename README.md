@@ -13,7 +13,7 @@ A tmux sidebar that lists every tmux session and the [Claude Code](https://claud
 | Icon | Status | Claude Code hook |
 |---|---|---|
 | ⠹ (green) | running | `UserPromptSubmit` / `PreToolUse` / `PostToolUse` |
-| ◆ (yellow) | waiting for approval | `PermissionRequest` / `Notification(permission_prompt)` |
+| ◆ (yellow) | waiting for you | `PermissionRequest` / `Notification(permission_prompt)` / `PreToolUse(AskUserQuestion)` |
 | ✓ (cyan) | done | `Stop` |
 | ○ (gray) | idle | `SessionStart`, 60 s without input (`Notification(idle_prompt)`) |
 
@@ -83,11 +83,13 @@ This registers the hooks and appends `run-shell '.../sidebar.tmux'` to `~/.tmux.
 |---|---|
 | `prefix + b` | Toggle the sidebar (in every window) |
 | `prefix + B` | Show the list in a popup (jumps and closes on select) |
+| `prefix + C-n` / `prefix + C-p` | Go to the next / previous Claude that is done or waiting for you |
 | `j` / `k` / `g` / `G` | Move the selection |
+| `n` / `p` | Select the next / previous done or waiting Claude |
 | `Enter` / click | Go to that pane (or that tmux session, on a session row) |
 | `q` | Close |
 
-The selection follows the pane you are focused on.
+Sessions, windows and panes are listed in tmux's own order. The selection follows the pane you are focused on.
 
 ## Options
 
@@ -95,14 +97,16 @@ Set them in `~/.tmux.conf` **before** the plugin is loaded (before `run '~/.tmux
 
 ```tmux
 set -g @cts_width 34          # sidebar width
-set -g @cts_toggle_key b      # several keys allowed, e.g. 'b C-b'
+set -g @cts_toggle_key b      # several keys allowed, e.g. 'b C-s'
 set -g @cts_popup_key B
+set -g @cts_next_key C-n
+set -g @cts_prev_key C-p
 set -g @cts_default off       # open the sidebar when tmux starts
 set -g @cts_lang en           # en / ja
 set -g @cts_hook_index 77     # tmux hook array index (change only on conflicts)
 ```
 
-`C-b` is tmux's default `send-prefix` binding; adding it to `@cts_toggle_key` replaces that.
+Avoid keys tmux already binds (e.g. `C-b` is `send-prefix`): the plugin's binding replaces them.
 
 ## How it works
 
@@ -127,6 +131,8 @@ For debugging, start Claude with `CTS_DEBUG=1` to append raw hook payloads to `~
 shellcheck bin/cts bin/cts-hook sidebar.tmux install.sh scripts/*.sh
 scripts/screenshot.sh        # regenerate docs/screenshot.svg (scripts/screenshot.sh ja for the Japanese one)
 ```
+
+To release, bump `version` in `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`, add the section to `CHANGELOG.md`, merge to `main`, and run the **Release** workflow from the Actions tab. It tags `v<version>` and publishes a GitHub release; only the repository owner can run it.
 
 ## License
 

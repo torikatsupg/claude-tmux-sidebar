@@ -13,7 +13,7 @@ tmux の全ウィンドウ左側に、全 tmux セッションとその中で起
 | 表示 | 状態 | 元になる Claude Code hook |
 |---|---|---|
 | ⠹ (緑) | 稼働中 | `UserPromptSubmit` / `PreToolUse` / `PostToolUse` |
-| ◆ (黄) | 承認待ち | `PermissionRequest` / `Notification(permission_prompt)` |
+| ◆ (黄) | 承認待ち・質問待ち | `PermissionRequest` / `Notification(permission_prompt)` / `PreToolUse(AskUserQuestion)` |
 | ✓ (水色) | 完了 | `Stop` |
 | ○ (灰) | 待機 | `SessionStart`、60 秒放置 (`Notification(idle_prompt)`) |
 
@@ -83,11 +83,13 @@ hook を登録し、`~/.tmux.conf` に `run-shell '.../sidebar.tmux'` を追記�
 |---|---|
 | `prefix + b` | サイドバー開閉（全ウィンドウ） |
 | `prefix + B` | ポップアップで一覧（選択するとジャンプして閉じる） |
+| `prefix + C-n` / `prefix + C-p` | 次 / 前の完了・承認待ちの Claude へ移動 |
 | `j` / `k` / `g` / `G` | 選択移動 |
+| `n` / `p` | 次 / 前の完了・承認待ちの Claude を選択 |
 | `Enter` / クリック | そのペイン（セッション行ならその tmux セッション）へ移動 |
 | `q` | 閉じる |
 
-選択行は今フォーカスしているペインに追従します。
+セッション・ウィンドウ・ペインは tmux と同じ順に並びます。選択行は今フォーカスしているペインに追従します。
 
 ## 設定
 
@@ -95,14 +97,16 @@ hook を登録し、`~/.tmux.conf` に `run-shell '.../sidebar.tmux'` を追記�
 
 ```tmux
 set -g @cts_width 34          # サイドバー幅
-set -g @cts_toggle_key b      # 複数指定可（例: 'b C-b'）
+set -g @cts_toggle_key b      # 複数指定可（例: 'b C-s'）
 set -g @cts_popup_key B
+set -g @cts_next_key C-n
+set -g @cts_prev_key C-p
 set -g @cts_default off       # tmux 起動時に開いておくか
 set -g @cts_lang ja           # en / ja
 set -g @cts_hook_index 77     # tmux hook 配列のインデックス（衝突時のみ変更）
 ```
 
-`C-b` は tmux 標準では `send-prefix` に割り当てられています。`@cts_toggle_key` に含めるとそれを上書きします。
+tmux が既に割り当てているキー（例: `C-b` は `send-prefix`）を指定すると、プラグイン側の割り当てで上書きされます。
 
 ## 仕組み
 
@@ -127,6 +131,8 @@ set -g @cts_hook_index 77     # tmux hook 配列のインデックス（衝突�
 shellcheck bin/cts bin/cts-hook sidebar.tmux install.sh scripts/*.sh
 scripts/screenshot.sh        # docs/screenshot.svg を再生成（日本語版は scripts/screenshot.sh ja）
 ```
+
+リリースは、`.claude-plugin/plugin.json` と `.claude-plugin/marketplace.json` の `version` を上げ、`CHANGELOG.md` に節を足して `main` にマージしたあと、Actions タブから **Release** ワークフローを実行します。`v<version>` のタグと GitHub Release を作ります。実行できるのはリポジトリのオーナーだけです。
 
 ## ライセンス
 

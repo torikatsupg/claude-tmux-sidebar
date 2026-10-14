@@ -30,6 +30,8 @@ jobs:
         run: |
           echo '{"hook_event_name":"PreToolUse","session_id":"ci","tool_name":"Bash","cwd":"/tmp"}' | bin/cts-hook
           jq -e '.state == "running" and .detail == "Bash"' "$CTS_STATE_DIR/ci.json"
+          echo '{"hook_event_name":"PreToolUse","session_id":"ci","tool_name":"AskUserQuestion"}' | bin/cts-hook
+          jq -e '.state == "waiting" and .detail == "Question"' "$CTS_STATE_DIR/ci.json"
           echo '{"hook_event_name":"Stop","session_id":"ci"}' | bin/cts-hook
           jq -e '.state == "done"' "$CTS_STATE_DIR/ci.json"
           echo '{"hook_event_name":"SessionEnd","session_id":"ci"}' | bin/cts-hook

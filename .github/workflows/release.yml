@@ -1,0 +1,51 @@
+name: Release
+
+# Tags v<version> from .claude-plugin/plugin.json and publishes a GitHub release.
+# Run from the Actions tab: "Release" → "Run workflow" on main.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # Only the repository owner may release, even if others get write access later.
+    if: github.actor == github.repository_owner && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check versions
+        id: version
+        run: |
+          version=$(jq -r .version .claude-plugin/plugin.json)
+          market=$(jq -r '.plugins[] | select(.name == "tmux-sidebar") | .version' .claude-plugin/marketplace.json)
+          if [ "$version" != "$market" ]; then
+            echo "::error::plugin.json ($version) and marketplace.json ($market) disagree"; exit 1
+          fi
+          if ! grep -q "^## \[$version\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no section for $version"; exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "::error::tag v$version already exists; bump the version first"; exit 1
+          fi
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+
+      - name: Tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Release notes: the CHANGELOG section of this version, without its heading.
+          awk -v v="$VERSION" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && /^## \[/ { exit }
+            on && /^\[[^]]+\]: / { exit }
+            on { print }
+          ' CHANGELOG.md >notes.md
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+          gh release create "v$VERSION" --title "v$VERSION" --notes-file notes.md --verify-tag
