@@ -1,6 +1,6 @@
 # claude-tmux-sidebar
 
-tmux の全ウィンドウ左側に、起動中の Claude Code セッションを tmux セッションごとに一覧表示するサイドバー。
+tmux の全ウィンドウ左側に、全 tmux セッションとその中で起動中の Claude Code セッションを一覧表示するサイドバー。
 
 ```
  Claude ●1 ◆1 ✓1
@@ -10,7 +10,11 @@ tmux の全ウィンドウ左側に、起動中の Claude Code セッション�
  ◆ 1:web   Edit 承認待ち 1m
  ▾ personal
  ✓ 0:blog         完了 5m
+ ▾ scratch
+   なし
 ```
+
+Claude が動いていない tmux セッションも「なし」として表示します。選択行は今フォーカスしているペイン（Claude が無ければそのセッション）に追従します。
 
 | 表示 | 状態 | 元になる Claude Code hook |
 |---|---|---|
@@ -43,7 +47,7 @@ ghq get https://github.com/torikatsupg/claude-tmux-sidebar
 | `prefix + b` | サイドバー開閉（全ウィンドウ） |
 | `prefix + B` | ポップアップで一覧（選択するとジャンプして閉じる） |
 | `j` / `k` / `g` / `G` | 選択移動（サイドバー内） |
-| `Enter` / クリック | そのセッションのペインへ移動 |
+| `Enter` / クリック | そのペイン（セッション行ならその tmux セッション）へ移動 |
 | `q` | 閉じる |
 
 ## 設定 (`~/.tmux.conf`、`run-shell` 行より前に書く)

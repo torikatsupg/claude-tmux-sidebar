@@ -6,7 +6,7 @@ CTS="$CURRENT_DIR/bin/cts"
 opt() { local v; v=$(tmux show -gqv "$1"); echo "${v:-$2}"; }
 
 tmux bind-key "$(opt @cts_toggle_key b)" run-shell -b "'$CTS' toggle"
-tmux bind-key "$(opt @cts_popup_key B)" run-shell -b "'$CTS' popup"
+tmux bind-key "$(opt @cts_popup_key B)" run-shell -b "'$CTS' popup '#{pane_id}'"
 
 # Fixed hook indexes keep re-sourcing idempotent and leave the user's own hooks alone.
 idx=$(opt @cts_hook_index 77)
