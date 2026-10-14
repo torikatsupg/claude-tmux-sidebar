@@ -12,7 +12,6 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
-- Closing the sidebar also closed the active pane of windows that had a single pane besides the sidebar.
 - The sidebar selection could disagree with the focused pane after jumping to another window and coming back.
 
 ## [0.1.0] - 2026-10-14
