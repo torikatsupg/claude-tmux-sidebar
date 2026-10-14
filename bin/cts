@@ -34,6 +34,9 @@ ensure_locked() {
   [ -n "$(sidebar_of "$win")" ] && return 0
   # Splitting a zoomed window would unzoom it; the sidebar is added on the next visit instead.
   [ "$(tmux display -p -t "$win" '#{window_zoomed_flag}' 2>/dev/null)" = "1" ] && return 0
+  # Remember the layout so closing the sidebar can put the panes back as they were.
+  tmux set -w -t "$win" @cts_layout "$(tmux display -p -t "$win" '#{window_layout}')"
+  tmux set -w -t "$win" @cts_panes "$(pane_ids "$win")"
   pane=$(tmux split-window -hbfd -l "$(width)" -t "$win" -P -F '#{pane_id}' "exec '$SIDEBAR'" 2>/dev/null) || return 0
   tmux set -p -t "$pane" @cts_sidebar 1
   tmux set -p -t "$pane" remain-on-exit off
@@ -59,13 +62,28 @@ open_all() {
   return 0
 }
 
+pane_ids() { # the window's non-sidebar panes, in order
+  tmux list-panes -t "$1" -F '#{pane_id} #{@cts_sidebar}' | awk '$2 != "1" { printf "%s ", $1 }'
+}
+
 close_all() {
-  tmux list-panes -a -F '#{pane_id} #{pane_active} #{@cts_sidebar}' | awk '$3 == "1" { print $1, $2 }' |
-    while read -r p active; do
+  tmux list-panes -a -F '#{pane_id} #{window_id} #{pane_active} #{@cts_sidebar}' | awk '$4 == "1" { print $1, $2, $3 }' |
+    while read -r p win active; do
       # Give the focus back to the pane the user was in before the sidebar took it.
       [ "$active" = "1" ] && tmux last-pane -t "$p" 2>/dev/null
       tmux kill-pane -t "$p"
+      restore_layout "$win"
     done
+}
+
+restore_layout() {
+  local win="$1" layout
+  layout=$(tmux show -wqv -t "$win" @cts_layout)
+  # Only while the panes are still the ones the layout was saved with; otherwise tmux's own result stands.
+  [ -n "$layout" ] && [ "$(pane_ids "$win")" = "$(tmux show -wqv -t "$win" @cts_panes)" ] &&
+    tmux select-layout -t "$win" "$layout" 2>/dev/null
+  tmux set -wu -t "$win" @cts_layout
+  tmux set -wu -t "$win" @cts_panes
 }
 
 case "${1:-}" in
