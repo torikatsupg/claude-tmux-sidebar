@@ -15,7 +15,7 @@ opt() { local v; v=$(tmux show -gqv "$1"); echo "${v:-$2}"; }
 
 # Space-separated, e.g. "b C-b" (note that C-b C-b is send-prefix by default).
 for key in $(opt @cts_toggle_key b); do
-  tmux bind-key "$key" run-shell -b "'$CTS' toggle"
+  tmux bind-key "$key" run-shell -b "'$CTS' toggle '#{pane_id}'"
 done
 tmux bind-key "$(opt @cts_popup_key B)" run-shell -b "'$CTS' popup '#{pane_id}'"
 tmux bind-key "$(opt @cts_next_key C-n)" run-shell -b "'$CTS' next '#{pane_id}' '#{client_name}'"
