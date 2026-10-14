@@ -20,8 +20,11 @@ A tmux sidebar that lists every tmux session and the [Claude Code](https://claud
 ## Requirements
 
 - tmux 3.2+
-- python3, jq, bash
 - Claude Code
+- macOS or Linux (arm64 / x86_64), with `curl` to download the prebuilt binary — or a [Rust toolchain](https://rustup.rs) to build it
+- `jq`, only for `install.sh`
+
+The plugin is one Rust binary. The first time the tmux plugin or a Claude Code hook runs, `scripts/fetch-binary.sh` downloads the binary for your platform from the matching GitHub release (verifying its SHA-256) into `bin/`, or builds it with `cargo` when no release binary fits. Claude Code skips the hook events that arrive before the binary is ready.
 
 ## Install
 
@@ -35,7 +38,7 @@ With [TPM](https://github.com/tmux-plugins/tpm), add to `~/.tmux.conf`, then pre
 set -g @plugin 'torikatsupg/claude-tmux-sidebar'
 ```
 
-To pin a release, use `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.1.2'`.
+To pin a release, use `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.2.0'`.
 
 ### 2. Claude Code hooks
 
@@ -110,9 +113,11 @@ Avoid keys tmux already binds (e.g. `C-b` is `send-prefix`): the plugin's bindin
 
 ## How it works
 
-- `bin/cts-hook` runs on each Claude Code hook and writes the status, `$TMUX_PANE` and Claude's PID to `~/.cache/claude-tmux-sidebar/<session_id>.json`. `SessionEnd` removes the file.
-- `bin/cts` controls tmux: tmux hooks such as `after-new-window` add a full-height pane on the left of each window and restore its width after layout changes.
-- `bin/cts-sidebar` draws the list with curses and cleans up state files whose pane or process is gone. It closes itself in a window where only the sidebar is left.
+One binary, `claude-tmux-sidebar`, does everything; `bin/cts` and `bin/cts-hook` are small shell entry points for it.
+
+- `claude-tmux-sidebar hook` runs on each Claude Code hook and writes the status, `$TMUX_PANE` and Claude's PID to `~/.cache/claude-tmux-sidebar/<session_id>.json`. `SessionEnd` removes the file.
+- `claude-tmux-sidebar toggle`, `ensure`, `fix-width`, … control tmux: tmux hooks such as `after-new-window` add a full-height pane on the left of each window and restore its width after layout changes. Closing the sidebar restores the window's layout from before it opened.
+- `claude-tmux-sidebar sidebar` draws the list and cleans up state files whose pane or process is gone. It closes itself in a window where only the sidebar is left.
 
 ## Privacy
 
@@ -127,12 +132,28 @@ For debugging, start Claude with `CTS_DEBUG=1` to append raw hook payloads to `~
 
 ## Development
 
+Requires a Rust toolchain (the version is pinned in `rust-toolchain.toml`), [shellcheck](https://www.shellcheck.net) and [shfmt](https://github.com/mvdan/sh).
+
 ```sh
-shellcheck bin/cts bin/cts-hook sidebar.tmux install.sh scripts/*.sh
-scripts/screenshot.sh        # regenerate docs/screenshot.svg (scripts/screenshot.sh ja for the Japanese one)
+cargo xtask ci                 # rustfmt, clippy, tests, shellcheck, shfmt and module size limits (what CI runs)
+scripts/fetch-binary.sh --build  # build bin/claude-tmux-sidebar from this checkout for a live tmux
+scripts/screenshot.sh          # regenerate docs/screenshot.svg (scripts/screenshot.sh ja for the Japanese one)
 ```
 
-To release, bump `version` in `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`, add the section to `CHANGELOG.md`, merge to `main`, and run the **Release** workflow from the Actions tab. It tags `v<version>` and publishes a GitHub release; only the repository owner can run it.
+Code layout (`src/`): pure modules turn values into values, and side effects stay at the edges.
+
+| Module | Role |
+|---|---|
+| `cli`, `lib`, `main` | argument parsing and dispatch |
+| `tmux`, `session::store`, `process` | side effects: the tmux server, state files, other processes |
+| `hook` | hook payload → status transition (`transition` is a pure state machine) |
+| `control` | opening / closing sidebars and restoring layouts |
+| `sidebar` | the list UI: `update` is a pure `(model, msg) → (model, effects)` function, `view` renders, `effect` runs effects |
+| `listing`, `jump` | grouping in tmux order, next / previous done or waiting session |
+
+Style rules, enforced by clippy (`Cargo.toml` `[workspace.lints]`, `clippy.toml`) and `cargo xtask ci`: no `unwrap` / `expect` / `panic` / indexing / `as` casts, functions of at most 30 lines, modules of at most 200 lines, and iterator adapters (`map`, `filter`, `fold`) over mutable loops.
+
+To release, bump `version` in `Cargo.toml`, `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`, add the section to `CHANGELOG.md`, merge to `main`, and run the **Release** workflow from the Actions tab. It builds the binaries for macOS and Linux (arm64 / x86_64), tags `v<version>` and publishes a GitHub release with them; only the repository owner can run it.
 
 ## License
 

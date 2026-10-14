@@ -8,8 +8,11 @@
 set -euo pipefail
 MODE="${1:-}"
 case "$MODE" in
-  ""|--hooks-only|--uninstall) ;;
-  *) echo "usage: $0 [--hooks-only|--uninstall]" >&2; exit 1 ;;
+  "" | --hooks-only | --uninstall) ;;
+  *)
+    echo "usage: $0 [--hooks-only|--uninstall]" >&2
+    exit 1
+    ;;
 esac
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOOK="$REPO/bin/cts-hook"
@@ -18,8 +21,11 @@ TMUX_CONF="${TMUX_CONF:-$HOME/.tmux.conf}"
 TMUX_LINE="run-shell '$REPO/sidebar.tmux'"
 EVENTS='["SessionStart","SessionEnd","UserPromptSubmit","PreToolUse","PostToolUse","PermissionRequest","Notification","Stop"]'
 
-for cmd in jq python3 tmux; do
-  command -v "$cmd" >/dev/null || { echo "missing dependency: $cmd" >&2; exit 1; }
+for cmd in jq tmux; do
+  command -v "$cmd" >/dev/null || {
+    echo "missing dependency: $cmd" >&2
+    exit 1
+  }
 done
 
 # Removes our hook entries (matched by command path) and drops events left empty.
@@ -46,7 +52,8 @@ if [ "$MODE" = "--uninstall" ]; then
   fi
   if [ -n "${TMUX:-}" ]; then
     "$REPO/bin/cts" off
-    idx=$(tmux show -gqv @cts_hook_index); idx=${idx:-77}
+    idx=$(tmux show -gqv @cts_hook_index)
+    idx=${idx:-77}
     for h in after-new-window after-new-session session-window-changed client-session-changed window-layout-changed client-resized; do
       tmux set-hook -gu "${h}[$idx]" 2>/dev/null || true
     done
@@ -54,6 +61,8 @@ if [ "$MODE" = "--uninstall" ]; then
   echo "uninstalled (tmux key bindings remain until the tmux server restarts)"
   exit 0
 fi
+
+"$REPO/scripts/fetch-binary.sh"
 
 jq --arg hook "$HOOK" --argjson events "$EVENTS" "$strip_filter | $add_filter" "$SETTINGS" >"$SETTINGS.tmp" &&
   mv "$SETTINGS.tmp" "$SETTINGS"

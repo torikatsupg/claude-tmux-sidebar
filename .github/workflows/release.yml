@@ -1,30 +1,32 @@
 name: Release
 
-# Tags v<version> from .claude-plugin/plugin.json and publishes a GitHub release.
+# Builds the binaries, tags v<version> from Cargo.toml and publishes a GitHub release with them.
 # Run from the Actions tab: "Release" → "Run workflow" on main.
 on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  release:
+  check:
     # Only the repository owner may release, even if others get write access later.
     if: github.actor == github.repository_owner && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Check versions
         id: version
         run: |
-          version=$(jq -r .version .claude-plugin/plugin.json)
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
+          plugin=$(jq -r .version .claude-plugin/plugin.json)
           market=$(jq -r '.plugins[] | select(.name == "tmux-sidebar") | .version' .claude-plugin/marketplace.json)
-          if [ "$version" != "$market" ]; then
-            echo "::error::plugin.json ($version) and marketplace.json ($market) disagree"; exit 1
+          if [ "$version" != "$plugin" ] || [ "$version" != "$market" ]; then
+            echo "::error::Cargo.toml ($version), plugin.json ($plugin) and marketplace.json ($market) disagree"; exit 1
           fi
           if ! grep -q "^## \[$version\]" CHANGELOG.md; then
             echo "::error::CHANGELOG.md has no section for $version"; exit 1
@@ -34,10 +36,53 @@ jobs:
           fi
           echo "version=$version" >>"$GITHUB_OUTPUT"
 
+  build:
+    needs: check
+    strategy:
+      matrix:
+        include:
+          - { target: aarch64-apple-darwin, os: macos-latest }
+          - { target: x86_64-apple-darwin, os: macos-latest }
+          - { target: x86_64-unknown-linux-musl, os: ubuntu-latest }
+          - { target: aarch64-unknown-linux-musl, os: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: ${{ matrix.target }}
+      - name: musl tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y musl-tools
+      - name: Build
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          cargo build --release --locked --target "$TARGET"
+          mkdir dist
+          name="claude-tmux-sidebar-$TARGET"
+          cp "target/$TARGET/release/claude-tmux-sidebar" "dist/$name"
+          (cd dist && shasum -a 256 "$name" >"$name.sha256")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: dist/*
+
+  release:
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
       - name: Tag and release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ needs.check.outputs.version }}
         run: |
           # Release notes: the CHANGELOG section of this version, without its heading.
           awk -v v="$VERSION" '
@@ -48,4 +93,4 @@ jobs:
           ' CHANGELOG.md >notes.md
           git tag "v$VERSION"
           git push origin "v$VERSION"
-          gh release create "v$VERSION" --title "v$VERSION" --notes-file notes.md --verify-tag
+          gh release create "v$VERSION" --title "v$VERSION" --notes-file notes.md --verify-tag dist/*

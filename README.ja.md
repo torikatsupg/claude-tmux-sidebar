@@ -20,8 +20,11 @@ tmux の全ウィンドウ左側に、全 tmux セッションとその中で起
 ## 必要なもの
 
 - tmux 3.2+
-- python3 / jq / bash
 - Claude Code
+- macOS または Linux（arm64 / x86_64）。ビルド済みバイナリのダウンロードに `curl`、または自前でビルドするなら [Rust ツールチェーン](https://rustup.rs)
+- `jq`（`install.sh` を使う場合のみ）
+
+本体は Rust の単一バイナリです。tmux プラグインか Claude Code の hook が初めて動いたときに、`scripts/fetch-binary.sh` が対応する GitHub Release から自分の環境向けのバイナリを `bin/` にダウンロードします（SHA-256 を検証）。合うバイナリが無ければ `cargo` でビルドします。バイナリが揃うまでに届いた hook イベントは読み飛ばします。
 
 ## インストール
 
@@ -35,7 +38,7 @@ tmux の全ウィンドウ左側に、全 tmux セッションとその中で起
 set -g @plugin 'torikatsupg/claude-tmux-sidebar'
 ```
 
-リリースを固定するなら `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.1.2'`。
+リリースを固定するなら `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.2.0'`。
 
 ### 2. Claude Code の hook
 
@@ -110,9 +113,11 @@ tmux が既に割り当てているキー（例: `C-b` は `send-prefix`）を�
 
 ## 仕組み
 
-- `bin/cts-hook`: Claude Code の各 hook から呼ばれ、`~/.cache/claude-tmux-sidebar/<session_id>.json` に状態・`$TMUX_PANE`・Claude の PID を書きます。`SessionEnd` で削除します。
-- `bin/cts`: tmux 側の制御。`after-new-window` などの tmux hook でウィンドウ左端に全高ペインを足し、レイアウト変更時は幅を戻します。
-- `bin/cts-sidebar`: curses の描画。ペインが消えた・プロセスが死んだセッションの状態ファイルは掃除します。サイドバーしか残っていないウィンドウでは自分を閉じます。
+すべて 1 つのバイナリ `claude-tmux-sidebar` が担い、`bin/cts` と `bin/cts-hook` はその入口の小さなシェルスクリプトです。
+
+- `claude-tmux-sidebar hook`: Claude Code の各 hook から呼ばれ、`~/.cache/claude-tmux-sidebar/<session_id>.json` に状態・`$TMUX_PANE`・Claude の PID を書きます。`SessionEnd` で削除します。
+- `claude-tmux-sidebar toggle` / `ensure` / `fix-width` など: tmux 側の制御。`after-new-window` などの tmux hook でウィンドウ左端に全高ペインを足し、レイアウト変更時は幅を戻します。サイドバーを閉じると、開く前のレイアウトに戻します。
+- `claude-tmux-sidebar sidebar`: 一覧の描画。ペインが消えた・プロセスが死んだセッションの状態ファイルは掃除します。サイドバーしか残っていないウィンドウでは自分を閉じます。
 
 ## プライバシー
 
@@ -127,12 +132,28 @@ tmux が既に割り当てているキー（例: `C-b` は `send-prefix`）を�
 
 ## 開発
 
+Rust ツールチェーン（バージョンは `rust-toolchain.toml` で固定）、[shellcheck](https://www.shellcheck.net)、[shfmt](https://github.com/mvdan/sh) が必要です。
+
 ```sh
-shellcheck bin/cts bin/cts-hook sidebar.tmux install.sh scripts/*.sh
-scripts/screenshot.sh        # docs/screenshot.svg を再生成（日本語版は scripts/screenshot.sh ja）
+cargo xtask ci                 # rustfmt・clippy・テスト・shellcheck・shfmt・モジュールサイズ上限（CI と同じ）
+scripts/fetch-binary.sh --build  # 手元の tmux で試すために、このチェックアウトから bin/claude-tmux-sidebar をビルド
+scripts/screenshot.sh          # docs/screenshot.svg を再生成（日本語版は scripts/screenshot.sh ja）
 ```
 
-リリースは、`.claude-plugin/plugin.json` と `.claude-plugin/marketplace.json` の `version` を上げ、`CHANGELOG.md` に節を足して `main` にマージしたあと、Actions タブから **Release** ワークフローを実行します。`v<version>` のタグと GitHub Release を作ります。実行できるのはリポジトリのオーナーだけです。
+コードの構成（`src/`）: 純粋なモジュールは値から値を作るだけにし、副作用は端に寄せています。
+
+| モジュール | 役割 |
+|---|---|
+| `cli`・`lib`・`main` | 引数の解析と振り分け |
+| `tmux`・`session::store`・`process` | 副作用: tmux サーバー・状態ファイル・他プロセス |
+| `hook` | hook の payload → 状態遷移（`transition` は純粋な状態機械） |
+| `control` | サイドバーの開閉とレイアウトの復元 |
+| `sidebar` | 一覧 UI。`update` は純粋な `(model, msg) → (model, effects)`、`view` が描画、`effect` が副作用を実行 |
+| `listing`・`jump` | tmux 順のグループ化、完了・承認待ちセッションへの移動 |
+
+スタイルのルールは clippy（`Cargo.toml` の `[workspace.lints]` と `clippy.toml`）と `cargo xtask ci` で強制しています: `unwrap` / `expect` / `panic` / 添字アクセス / `as` キャストの禁止、関数は 30 行まで、モジュールは 200 行まで、可変のループより `map`・`filter`・`fold` などのイテレータ。
+
+リリースは、`Cargo.toml`・`.claude-plugin/plugin.json`・`.claude-plugin/marketplace.json` の `version` を上げ、`CHANGELOG.md` に節を足して `main` にマージしたあと、Actions タブから **Release** ワークフローを実行します。macOS と Linux（arm64 / x86_64）のバイナリをビルドし、`v<version>` のタグと、それらを添付した GitHub Release を作ります。実行できるのはリポジトリのオーナーだけです。
 
 ## ライセンス
 
