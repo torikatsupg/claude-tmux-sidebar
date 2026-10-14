@@ -3,6 +3,7 @@
 # Registered for every hook event; reads the hook payload from stdin. Never fails.
 
 set -u
+umask 077 # state files and the debug log are private to the user
 STATE_DIR="${CTS_STATE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/claude-tmux-sidebar}"
 mkdir -p "$STATE_DIR" 2>/dev/null || exit 0
 
@@ -45,7 +46,7 @@ case "$event" in
 esac
 
 # Keep the tool name visible while waiting for approval (Notification carries no tool_name).
-if [ "$state" = "waiting" ] && [ -z "$detail" ] && [ "$prev_state" = "waiting" -o "$prev_state" = "running" ] && [ -f "$file" ]; then
+if [ "$state" = "waiting" ] && [ -z "$detail" ] && { [ "$prev_state" = "waiting" ] || [ "$prev_state" = "running" ]; } && [ -f "$file" ]; then
   detail=$(jq -r '.detail // ""' "$file" 2>/dev/null)
 fi
 
@@ -56,7 +57,11 @@ if [ -z "$pid" ]; then
   for _ in 1 2 3 4 5 6; do
     [ -z "$p" ] || [ "$p" -le 1 ] && break
     read -r pp comm < <(ps -o ppid=,comm= -p "$p" 2>/dev/null)
-    if [ "${comm##*/}" = "claude" ]; then pid=$p; break; fi
+    case "${comm##*/}" in
+      claude) pid=$p; break ;;
+      # npm installs run as `node .../@anthropic-ai/claude-code/cli.js`.
+      node) case "$(ps -o args= -p "$p" 2>/dev/null)" in *claude*) pid=$p; break ;; esac ;;
+    esac
     p=$pp
   done
 fi

@@ -18,15 +18,6 @@ POPUP = "--popup" in sys.argv
 MY_PANE = os.environ.get("TMUX_PANE", "")
 MY_SOCKET = os.environ.get("TMUX", "").split(",")[0]
 ORIGIN_PANE = os.environ.get("CTS_ORIGIN_PANE", "")  # popup: the pane it was opened from
-OUTSIDE = "(tmux外)"
-
-SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
-STATES = {  # state -> (icon, label, color pair, sort order within summary)
-    "waiting": ("◆", "承認待ち", 2),
-    "running": ("●", "稼働中", 1),
-    "done": ("✓", "完了", 3),
-    "idle": ("○", "待機", 4),
-}
 
 
 def tmux(*args):
@@ -34,6 +25,26 @@ def tmux(*args):
         return subprocess.run(["tmux", *args], capture_output=True, text=True, timeout=2).stdout
     except (OSError, subprocess.SubprocessError):
         return ""
+
+
+MESSAGES = {
+    "en": {"waiting": "waiting", "running": "running", "done": "done", "idle": "idle",
+           "outside": "(outside tmux)", "no_sessions": "No sessions", "none": "none",
+           "help": "⏎ jump  j/k move  q close"},
+    "ja": {"waiting": "承認待ち", "running": "稼働中", "done": "完了", "idle": "待機",
+           "outside": "(tmux外)", "no_sessions": "セッションなし", "none": "なし",
+           "help": "⏎移動 j/k選択 q閉じる"},
+}
+T = MESSAGES.get(tmux("show", "-gqv", "@cts_lang").strip(), MESSAGES["en"])
+OUTSIDE = T["outside"]
+
+SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+STATES = {  # state -> (icon, label, color pair)
+    "waiting": ("◆", T["waiting"], 2),
+    "running": ("●", T["running"], 1),
+    "done": ("✓", T["done"], 3),
+    "idle": ("○", T["idle"], 4),
+}
 
 
 def width_of(s):
@@ -248,7 +259,7 @@ class App:
         self.row_at = {}
         y = 2
         if not self.rows:
-            self.put(y, 1, "セッションなし", curses.color_pair(4))
+            self.put(y, 1, T["no_sessions"], curses.color_pair(4))
         for kind, p in self.rows:
             if y >= h - 1:
                 break
@@ -263,9 +274,9 @@ class App:
                 self.draw_item(y, w, p, now)
                 self.row_at[y] = ("item", p["session_id"])
             elif kind == "none":
-                self.put(y, 3, "なし", curses.color_pair(4))
+                self.put(y, 3, T["none"], curses.color_pair(4))
             y += 1
-        self.put(h - 1, 1, "⏎移動 j/k選択 q閉じる", curses.color_pair(4))
+        self.put(h - 1, 1, T["help"], curses.color_pair(4))
         scr.refresh()
 
     def draw_item(self, y, w, e, now):
