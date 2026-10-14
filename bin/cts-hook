@@ -70,10 +70,11 @@ now=$(date +%s)
 since=$now
 [ "$state" = "$prev_state" ] && [ -n "$prev_since" ] && since=$prev_since
 
+tmux_env="${TMUX:-}" # unset when Claude runs outside tmux
 tmp="$file.$$"
 jq -n \
   --arg sid "$sid" --arg state "$state" --arg detail "$detail" --arg cwd "$cwd" \
-  --arg pane "${TMUX_PANE:-}" --arg socket "${TMUX%%,*}" --arg pid "$pid" \
+  --arg pane "${TMUX_PANE:-}" --arg socket "${tmux_env%%,*}" --arg pid "$pid" \
   --argjson now "$now" --argjson since "$since" \
   '{session_id:$sid, state:$state, detail:$detail, cwd:$cwd, pane:$pane, socket:$socket,
     pid:($pid|tonumber? // null), since:$since, updated_at:$now}' >"$tmp" 2>/dev/null && mv -f "$tmp" "$file"
