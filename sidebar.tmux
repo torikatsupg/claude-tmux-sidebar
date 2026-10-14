@@ -2,6 +2,7 @@
 # tmux plugin entry point (TPM compatible, or `run-shell /path/to/sidebar.tmux`).
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CTS="$CURRENT_DIR/bin/cts"
+FETCH="$CURRENT_DIR/scripts/fetch-binary.sh"
 
 # display-popup, set -p and hook arrays need tmux 3.2+. Unparsable versions (e.g. "master") are let through.
 ver=$(tmux -V | sed -E 's/^[^0-9]*([0-9]+)\.([0-9]+).*/\1 \2/')
@@ -11,7 +12,14 @@ if [ "${major:-}" -eq "${major:-}" ] 2>/dev/null && { [ "$major" -lt 3 ] || { [ 
   exit 0
 fi
 
-opt() { local v; v=$(tmux show -gqv "$1"); echo "${v:-$2}"; }
+opt() {
+  local v
+  v=$(tmux show -gqv "$1")
+  echo "${v:-$2}"
+}
+
+# Installs or updates the binary in the background; bin/cts waits for it when it is still missing.
+tmux run-shell -b "'$FETCH' >/dev/null 2>&1"
 
 # Space-separated, e.g. "b C-b" (note that C-b C-b is send-prefix by default).
 for key in $(opt @cts_toggle_key b); do

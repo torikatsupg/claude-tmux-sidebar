@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- Rewritten in Rust as a single binary. Python and jq are no longer needed at runtime; the binary is downloaded from the GitHub release on first use (or built with `cargo`).
+- Development: `cargo xtask ci` runs rustfmt, clippy, tests, shellcheck, shfmt and module size limits.
+
+### Fixed
+
+- Closing the sidebar with `q` now restores the window layout too (the pane used to close before the layout could be restored).
+
 ## [0.1.2] - 2026-10-14
 
 ### Fixed
