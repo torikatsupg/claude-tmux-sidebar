@@ -1,0 +1,20 @@
+{
+  "name": "torikatsupg",
+  "owner": {
+    "name": "torikatsupg"
+  },
+  "metadata": {
+    "description": "Claude Code plugins by torikatsupg"
+  },
+  "plugins": [
+    {
+      "name": "tmux-sidebar",
+      "source": "./",
+      "description": "Reports Claude Code session status to the claude-tmux-sidebar tmux plugin.",
+      "version": "0.1.0",
+      "author": {
+        "name": "torikatsupg"
+      }
+    }
+  ]
+}

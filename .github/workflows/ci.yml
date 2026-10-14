@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: shellcheck bin/cts bin/cts-hook sidebar.tmux install.sh scripts/*.sh
+      - name: python syntax
+        run: python3 -m py_compile bin/cts-sidebar scripts/ansi2svg.py
+      - name: JSON manifests
+        run: |
+          for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json; do
+            jq empty "$f"
+          done
+
+  hook:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: hook writes and removes the state file
+        env:
+          CTS_STATE_DIR: ${{ runner.temp }}/cts
+        run: |
+          echo '{"hook_event_name":"PreToolUse","session_id":"ci","tool_name":"Bash","cwd":"/tmp"}' | bin/cts-hook
+          jq -e '.state == "running" and .detail == "Bash"' "$CTS_STATE_DIR/ci.json"
+          echo '{"hook_event_name":"PreToolUse","session_id":"ci","tool_name":"AskUserQuestion"}' | bin/cts-hook
+          jq -e '.state == "waiting" and .detail == "Question"' "$CTS_STATE_DIR/ci.json"
+          echo '{"hook_event_name":"Stop","session_id":"ci"}' | bin/cts-hook
+          jq -e '.state == "done"' "$CTS_STATE_DIR/ci.json"
+          echo '{"hook_event_name":"SessionEnd","session_id":"ci"}' | bin/cts-hook
+          test ! -e "$CTS_STATE_DIR/ci.json"

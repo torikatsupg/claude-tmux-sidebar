@@ -3,7 +3,8 @@
 #   cts toggle          open/close the sidebar in every window
 #   cts ensure [win]    add the sidebar to a window if enabled and missing (tmux hooks)
 #   cts fix-width [win] restore the sidebar width after a layout change (tmux hooks)
-#   cts popup           show the list in a popup instead
+#   cts popup [pane]    show the list in a popup instead (pane: where it was opened from)
+#   cts next|prev [pane] [client]  go to the next / previous done or waiting Claude
 
 set -u
 BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,16 +22,21 @@ ensure() {
   local win="${1:-}"
   enabled || return 0
   [ -z "$win" ] && win=$(tmux display -p '#{window_id}')
+  # One window switch fires several tmux hooks at once; serialize them so only one sidebar gets added.
+  tmux wait-for -L "cts-$win"
+  ensure_locked "$win"
+  tmux wait-for -U "cts-$win"
+  return 0
+}
+
+ensure_locked() {
+  local win="$1" pane
   [ -n "$(sidebar_of "$win")" ] && return 0
   # Splitting a zoomed window would unzoom it; the sidebar is added on the next visit instead.
-  [ "$(tmux display -p -t "$win" '#{window_zoomed_flag}')" = "1" ] && return 0
-  local pane
-  pane=$(tmux split-window -hbfd -l "$(width)" -t "$win" -P -F '#{pane_id}' "exec '$SIDEBAR'") || return 0
+  [ "$(tmux display -p -t "$win" '#{window_zoomed_flag}' 2>/dev/null)" = "1" ] && return 0
+  pane=$(tmux split-window -hbfd -l "$(width)" -t "$win" -P -F '#{pane_id}' "exec '$SIDEBAR'" 2>/dev/null) || return 0
   tmux set -p -t "$pane" @cts_sidebar 1
   tmux set -p -t "$pane" remain-on-exit off
-  # Several tmux hooks fire for one window switch; keep only the oldest sidebar if they raced.
-  tmux list-panes -t "$win" -F '#{pane_id} #{@cts_sidebar}' | awk '$2 == "1" { print substr($1, 2) }' | sort -n | tail -n +2 |
-    while read -r n; do tmux kill-pane -t "%$n"; done
 }
 
 fix_width() {
@@ -61,6 +67,7 @@ case "${1:-}" in
   off)       tmux set -g @cts_enabled off; close_all ;;
   ensure)    ensure "${2:-}" ;;
   fix-width) fix_width "${2:-}" ;;
-  popup)     tmux display-popup -E -w "$(( $(width) + 6 ))" -h 80% -T ' Claude ' "'$SIDEBAR' --popup" ;;
-  *) echo "usage: cts {toggle|on|off|ensure|fix-width|popup}" >&2; exit 1 ;;
+  next|prev) exec "$SIDEBAR" --jump "$1" "${2:-}" "${3:-}" ;;
+  popup)     tmux display-popup -E -w "$(( $(width) + 6 ))" -h 80% -T ' Claude ' "CTS_ORIGIN_PANE='${2:-}' '$SIDEBAR' --popup" ;;
+  *) echo "usage: cts {toggle|on|off|ensure|fix-width|popup|next|prev}" >&2; exit 1 ;;
 esac

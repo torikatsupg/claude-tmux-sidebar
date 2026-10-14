@@ -17,14 +17,7 @@ BIN_DIR = os.path.dirname(os.path.realpath(__file__))
 POPUP = "--popup" in sys.argv
 MY_PANE = os.environ.get("TMUX_PANE", "")
 MY_SOCKET = os.environ.get("TMUX", "").split(",")[0]
-
-SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
-STATES = {  # state -> (icon, label, color pair, sort order within summary)
-    "waiting": ("◆", "承認待ち", 2),
-    "running": ("●", "稼働中", 1),
-    "done": ("✓", "完了", 3),
-    "idle": ("○", "待機", 4),
-}
+ORIGIN_PANE = os.environ.get("CTS_ORIGIN_PANE", "")  # popup: the pane it was opened from
 
 
 def tmux(*args):
@@ -32,6 +25,29 @@ def tmux(*args):
         return subprocess.run(["tmux", *args], capture_output=True, text=True, timeout=2).stdout
     except (OSError, subprocess.SubprocessError):
         return ""
+
+
+MESSAGES = {
+    "en": {"waiting": "waiting", "running": "running", "done": "done", "idle": "idle",
+           "outside": "(outside tmux)", "no_sessions": "No sessions", "none": "none",
+           "help": "⏎ jump  j/k move  q close",
+           "nothing": "No done or waiting Claude sessions"},
+    "ja": {"waiting": "承認待ち", "running": "稼働中", "done": "完了", "idle": "待機",
+           "outside": "(tmux外)", "no_sessions": "セッションなし", "none": "なし",
+           "help": "⏎移動 j/k選択 q閉じる",
+           "nothing": "完了・承認待ちの Claude はありません"},
+}
+T = MESSAGES.get(tmux("show", "-gqv", "@cts_lang").strip(), MESSAGES["en"])
+OUTSIDE = T["outside"]
+
+SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+STATES = {  # state -> (icon, label, color pair)
+    "waiting": ("◆", T["waiting"], 2),
+    "running": ("●", T["running"], 1),
+    "done": ("✓", T["done"], 3),
+    "idle": ("○", T["idle"], 4),
+}
+ATTENTION = ("waiting", "done")  # states `cts next` / `cts prev` and n/p visit
 
 
 def width_of(s):
@@ -75,15 +91,76 @@ def pid_alive(pid):
 
 
 def live_panes():
-    fmt = "\t".join(["#{pane_id}", "#{session_name}", "#{window_index}", "#{window_name}", "#{pane_index}", "#{window_id}", "#{@cts_sidebar}"])
+    fmt = "\t".join(["#{pane_id}", "#{session_name}", "#{window_index}", "#{window_name}", "#{pane_index}", "#{window_id}",
+                     "#{@cts_sidebar}", "#{pane_active}", "#{pane_last}"])
     panes = {}
     for line in tmux("list-panes", "-a", "-F", fmt).splitlines():
         parts = line.split("\t")
-        if len(parts) == 7:
-            pid, sess, widx, wname, pidx, wid, sidebar = parts
+        if len(parts) == 9:
+            pid, sess, widx, wname, pidx, wid, sidebar, active, last = parts
             panes[pid] = {"session": sess, "window": int(widx), "window_name": wname, "pane_index": int(pidx),
-                          "window_id": wid, "sidebar": sidebar == "1"}
+                          "window_id": wid, "sidebar": sidebar == "1", "active": active == "1", "last": last == "1"}
     return panes
+
+
+def tmux_sessions():
+    return [s for s in tmux("list-sessions", "-F", "#{session_name}").splitlines() if s]
+
+
+def focused_pane(panes, window_id):
+    """The non-sidebar pane the user is working in: the active one, or the previous one while the sidebar has focus."""
+    same = [(pid, p) for pid, p in panes.items() if p["window_id"] == window_id and not p["sidebar"]]
+    for key in ("active", "last"):
+        for pid, p in same:
+            if p[key]:
+                return pid
+    return same[0][0] if same else None
+
+
+def grouped(sessions):
+    """Claude sessions per tmux session, in tmux's own session / window / pane order; sessions outside tmux last."""
+    groups = {name: [] for name in tmux_sessions()}
+    for e in sessions:
+        groups.setdefault(e["tmux"]["session"] if e["tmux"] else OUTSIDE, []).append(e)
+    if OUTSIDE in groups:
+        groups[OUTSIDE] = groups.pop(OUTSIDE)
+    for items in groups.values():
+        items.sort(key=lambda e: (e["tmux"]["window"], e["tmux"]["pane_index"]) if e["tmux"] else (0, 0))
+    return groups
+
+
+def goto_pane(pane, client=""):
+    target = ["-c", client] if client else []
+    tmux("switch-client", *target, "-t", pane)
+    tmux("select-window", "-t", pane)
+    tmux("select-pane", "-t", pane)
+
+
+def jump_attention(direction, current, client):
+    """`cts next|prev`: goes to the next / previous done or waiting Claude after the current pane, wrapping around."""
+    panes = live_panes()
+    groups = grouped(load_sessions(panes))
+    order = {name: i for i, name in enumerate(groups)}
+
+    def pos(p):
+        return (order.get(p["session"], len(order)), p["window"], p["pane_index"])
+
+    targets = [e for items in groups.values() for e in items if e["tmux"] and e.get("state") in ATTENTION]
+    if not targets:
+        tmux("display-message", *(["-c", client] if client else []), T["nothing"])
+        return
+    me = panes.get(current)
+    if me and me["sidebar"]:
+        me = panes.get(focused_pane(panes, me["window_id"]))
+    if not me:
+        goto_pane(targets[0]["pane"], client)
+        return
+    here = pos(me)
+    if direction == "next":
+        e = next((e for e in targets if pos(e["tmux"]) > here), targets[0])
+    else:
+        e = next((e for e in reversed(targets) if pos(e["tmux"]) < here), targets[-1])
+    goto_pane(e["pane"], client)
 
 
 def load_sessions(panes):
@@ -126,9 +203,9 @@ class App:
     def __init__(self, scr):
         self.scr = scr
         self.sessions = []
-        self.rows = []  # (kind, payload): ("group", name) | ("item", entry) | ("blank", None)
-        self.selected_id = None
-        self.my_session = None
+        self.rows = []  # (kind, payload): ("group", name) | ("item", entry) | ("none", None) | ("blank", None)
+        self.selected = None  # key of the selected row: ("group", name) | ("item", session_id)
+        self.focused = None  # (pane, key) last synced to; selection follows it when the user moves focus
         self.my_window = None
         self.last_load = 0
         self.last_mtime = None
@@ -143,29 +220,40 @@ class App:
 
     def reload(self):
         panes = live_panes()
-        me = panes.get(MY_PANE)
+        me = panes.get(ORIGIN_PANE if POPUP else MY_PANE)
         if me:
-            self.my_session, self.my_window = me["session"], me["window_id"]
+            self.my_window = me["window_id"]
             if not POPUP and self.redundant(panes, me["window_id"]):
                 tmux("kill-pane", "-t", MY_PANE)
                 sys.exit(0)
         self.sessions = load_sessions(panes)
 
-        groups = {}
-        for e in self.sessions:
-            groups.setdefault(e["tmux"]["session"] if e["tmux"] else "(tmux外)", []).append(e)
-        order = sorted(groups, key=lambda g: (g != self.my_session, g == "(tmux外)", g))
         self.rows = []
-        for g in order:
+        for g, items in grouped(self.sessions).items():
             if self.rows:
                 self.rows.append(("blank", None))
             self.rows.append(("group", g))
-            items = sorted(groups[g], key=lambda e: (e["tmux"]["window"], e["tmux"]["pane_index"]) if e["tmux"] else (0, 0))
             self.rows.extend(("item", e) for e in items)
-        ids = [p["session_id"] for k, p in self.rows if k == "item"]
-        if self.selected_id not in ids:
-            self.selected_id = ids[0] if ids else None
+            if not items:
+                self.rows.append(("none", None))
+
+        keys = self.keys()
+        pane = focused_pane(panes, self.my_window) if self.my_window else None
+        focus_key = self.key_for_pane(pane, panes)
+        if (pane, focus_key) != self.focused and focus_key in keys:
+            self.focused = (pane, focus_key)
+            self.selected = focus_key
+        if self.selected not in keys:
+            self.selected = focus_key if focus_key in keys else (keys[0] if keys else None)
         self.last_load = time.time()
+
+    def key_for_pane(self, pane, panes):
+        if not pane:
+            return None
+        for kind, p in self.rows:
+            if kind == "item" and p.get("pane") == pane:
+                return ("item", p["session_id"])
+        return ("group", panes[pane]["session"])
 
     @staticmethod
     def redundant(panes, window_id):
@@ -180,7 +268,7 @@ class App:
             mtime = os.stat(STATE_DIR).st_mtime
         except FileNotFoundError:
             mtime = None
-        if mtime != self.last_mtime or time.time() - self.last_load > 2:
+        if mtime != self.last_mtime or time.time() - self.last_load > 0.5:
             self.last_mtime = mtime
             self.reload()
 
@@ -214,17 +302,24 @@ class App:
         self.row_at = {}
         y = 2
         if not self.rows:
-            self.put(y, 1, "セッションなし", curses.color_pair(4))
+            self.put(y, 1, T["no_sessions"], curses.color_pair(4))
         for kind, p in self.rows:
             if y >= h - 1:
                 break
             if kind == "group":
-                self.put(y, 1, f"▾ {p}", curses.A_BOLD)
+                sel = ("group", p) == self.selected
+                if sel:
+                    self.put(y, 0, " " * w, curses.A_REVERSE)
+                self.put(y, 1, f"▾ {p}", curses.A_BOLD | (curses.A_REVERSE if sel else 0))
+                if p != OUTSIDE:
+                    self.row_at[y] = ("group", p)
             elif kind == "item":
                 self.draw_item(y, w, p, now)
-                self.row_at[y] = p["session_id"]
+                self.row_at[y] = ("item", p["session_id"])
+            elif kind == "none":
+                self.put(y, 3, T["none"], curses.color_pair(4))
             y += 1
-        self.put(h - 1, 1, "⏎移動 j/k選択 q閉じる", curses.color_pair(4))
+        self.put(h - 1, 1, T["help"], curses.color_pair(4))
         scr.refresh()
 
     def draw_item(self, y, w, e, now):
@@ -232,7 +327,7 @@ class App:
         icon, label, color = STATES.get(state, STATES["idle"])
         if state == "running":
             icon = SPINNER[self.frame % len(SPINNER)]
-        sel = e["session_id"] == self.selected_id
+        sel = ("item", e["session_id"]) == self.selected
         here = e["tmux"] and e["tmux"]["window_id"] == self.my_window
         base = curses.A_REVERSE if sel else 0
 
@@ -253,24 +348,46 @@ class App:
         self.put(y, 3, truncate(name, name_w), base | (curses.A_BOLD if here else 0))
         self.put(y, w - width_of(right) - 1, right, base | curses.color_pair(color))
 
-    def item_ids(self):
-        return [p["session_id"] for k, p in self.rows if k == "item"]
+    def keys(self):
+        """Selectable rows in display order: tmux session headers and Claude sessions."""
+        out = []
+        for k, p in self.rows:
+            if k == "group" and p != OUTSIDE:
+                out.append(("group", p))
+            elif k == "item":
+                out.append(("item", p["session_id"]))
+        return out
+
+    def move_attention(self, d):
+        """Selects the next / previous done or waiting session, wrapping around."""
+        keys = self.keys()
+        hits = [("item", e["session_id"]) for k, e in self.rows if k == "item" and e.get("state") in ATTENTION]
+        if not hits:
+            return
+        i = keys.index(self.selected) if self.selected in keys else -1
+        if d > 0:
+            self.selected = next((k for k in hits if keys.index(k) > i), hits[0])
+        else:
+            self.selected = next((k for k in reversed(hits) if keys.index(k) < i), hits[-1])
 
     def move(self, d):
-        ids = self.item_ids()
-        if not ids:
+        keys = self.keys()
+        if not keys:
             return
-        i = ids.index(self.selected_id) if self.selected_id in ids else 0
-        self.selected_id = ids[max(0, min(len(ids) - 1, i + d))]
+        i = keys.index(self.selected) if self.selected in keys else 0
+        self.selected = keys[max(0, min(len(keys) - 1, i + d))]
 
-    def jump(self, sid):
-        e = next((e for e in self.sessions if e["session_id"] == sid), None)
+    def jump(self, key):
+        if not key:
+            return False
+        kind, val = key
+        if kind == "group":
+            tmux("switch-client", "-t", f"={val}")
+            return True
+        e = next((e for e in self.sessions if e["session_id"] == val), None)
         if not e or not e["tmux"]:
             return False
-        pane = e["pane"]
-        tmux("switch-client", "-t", pane)
-        tmux("select-window", "-t", pane)
-        tmux("select-pane", "-t", pane)
+        goto_pane(e["pane"])
         return True
 
     def run(self):
@@ -286,12 +403,16 @@ class App:
                 self.move(1)
             elif k in (ord("k"), curses.KEY_UP):
                 self.move(-1)
+            elif k == ord("n"):
+                self.move_attention(1)
+            elif k == ord("p"):
+                self.move_attention(-1)
             elif k in (ord("g"), curses.KEY_HOME):
                 self.move(-10**6)
             elif k in (ord("G"), curses.KEY_END):
                 self.move(10**6)
             elif k in (10, 13, curses.KEY_ENTER, ord("l")):
-                if self.jump(self.selected_id) and POPUP:
+                if self.jump(self.selected) and POPUP:
                     return
             elif k == ord("q") or (k == 27 and POPUP):
                 if POPUP:
@@ -306,14 +427,18 @@ class App:
                     _, _, my, _, _ = curses.getmouse()
                 except curses.error:
                     continue
-                sid = self.row_at.get(my)
-                if sid:
-                    self.selected_id = sid
-                    if self.jump(sid) and POPUP:
+                key = self.row_at.get(my)
+                if key:
+                    self.selected = key
+                    if self.jump(key) and POPUP:
                         return
 
 
 def main():
+    if len(sys.argv) > 2 and sys.argv[1] == "--jump":  # --jump next|prev [pane] [client]
+        args = sys.argv[2:] + ["", ""]
+        jump_attention(args[0], args[1], args[2])
+        return
     locale.setlocale(locale.LC_ALL, "")
     os.environ.setdefault("ESCDELAY", "25")
     try:

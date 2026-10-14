@@ -3,6 +3,7 @@
 # Registered for every hook event; reads the hook payload from stdin. Never fails.
 
 set -u
+umask 077 # state files and the debug log are private to the user
 STATE_DIR="${CTS_STATE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/claude-tmux-sidebar}"
 mkdir -p "$STATE_DIR" 2>/dev/null || exit 0
 
@@ -31,7 +32,10 @@ detail=""
 case "$event" in
   SessionStart)              state="${prev_state:-idle}" ;;
   UserPromptSubmit)          state="running" ;;
-  PreToolUse|PostToolUse)    state="running"; detail="$tool" ;;
+  # AskUserQuestion blocks on the user like an approval prompt.
+  PreToolUse)
+    if [ "$tool" = "AskUserQuestion" ]; then state="waiting"; detail="Question"; else state="running"; detail="$tool"; fi ;;
+  PostToolUse)               state="running"; detail="$tool" ;;
   PermissionRequest)         state="waiting"; detail="$tool" ;;
   Notification)
     case "$ntype" in
@@ -45,7 +49,7 @@ case "$event" in
 esac
 
 # Keep the tool name visible while waiting for approval (Notification carries no tool_name).
-if [ "$state" = "waiting" ] && [ -z "$detail" ] && [ "$prev_state" = "waiting" -o "$prev_state" = "running" ] && [ -f "$file" ]; then
+if [ "$state" = "waiting" ] && [ -z "$detail" ] && { [ "$prev_state" = "waiting" ] || [ "$prev_state" = "running" ]; } && [ -f "$file" ]; then
   detail=$(jq -r '.detail // ""' "$file" 2>/dev/null)
 fi
 
@@ -56,7 +60,11 @@ if [ -z "$pid" ]; then
   for _ in 1 2 3 4 5 6; do
     [ -z "$p" ] || [ "$p" -le 1 ] && break
     read -r pp comm < <(ps -o ppid=,comm= -p "$p" 2>/dev/null)
-    if [ "${comm##*/}" = "claude" ]; then pid=$p; break; fi
+    case "${comm##*/}" in
+      claude) pid=$p; break ;;
+      # npm installs run as `node .../@anthropic-ai/claude-code/cli.js`.
+      node) case "$(ps -o args= -p "$p" 2>/dev/null)" in *claude*) pid=$p; break ;; esac ;;
+    esac
     p=$pp
   done
 fi
@@ -65,10 +73,11 @@ now=$(date +%s)
 since=$now
 [ "$state" = "$prev_state" ] && [ -n "$prev_since" ] && since=$prev_since
 
+tmux_env="${TMUX:-}" # unset when Claude runs outside tmux
 tmp="$file.$$"
 jq -n \
   --arg sid "$sid" --arg state "$state" --arg detail "$detail" --arg cwd "$cwd" \
-  --arg pane "${TMUX_PANE:-}" --arg socket "${TMUX%%,*}" --arg pid "$pid" \
+  --arg pane "${TMUX_PANE:-}" --arg socket "${tmux_env%%,*}" --arg pid "$pid" \
   --argjson now "$now" --argjson since "$since" \
   '{session_id:$sid, state:$state, detail:$detail, cwd:$cwd, pane:$pane, socket:$socket,
     pid:($pid|tonumber? // null), since:$since, updated_at:$now}' >"$tmp" 2>/dev/null && mv -f "$tmp" "$file"
