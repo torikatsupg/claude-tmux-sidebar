@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
-# Registers the Claude Code hooks (~/.claude/settings.json) and the tmux plugin (~/.tmux.conf).
-# Idempotent; backs up settings.json before editing. `./install.sh --uninstall` reverts both.
+# shellcheck disable=SC2016 # jq filters are single-quoted on purpose
+# Manual install for setups without TPM / the Claude Code plugin.
+#   ./install.sh               register the Claude Code hooks (~/.claude/settings.json) and the tmux plugin (~/.tmux.conf)
+#   ./install.sh --hooks-only  register only the hooks (tmux side loaded by TPM)
+#   ./install.sh --uninstall   revert both
+# Idempotent; backs up settings.json before editing.
 set -euo pipefail
+MODE="${1:-}"
+case "$MODE" in
+  ""|--hooks-only|--uninstall) ;;
+  *) echo "usage: $0 [--hooks-only|--uninstall]" >&2; exit 1 ;;
+esac
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOOK="$REPO/bin/cts-hook"
 SETTINGS="${CLAUDE_SETTINGS:-$HOME/.claude/settings.json}"
@@ -29,7 +38,7 @@ mkdir -p "$(dirname "$SETTINGS")"
 [ -f "$SETTINGS" ] || echo '{}' >"$SETTINGS"
 cp "$SETTINGS" "$SETTINGS.bak.$(date +%Y%m%d%H%M%S)"
 
-if [ "${1:-}" = "--uninstall" ]; then
+if [ "$MODE" = "--uninstall" ]; then
   jq --arg hook "$HOOK" "$strip_filter" "$SETTINGS" >"$SETTINGS.tmp" && mv "$SETTINGS.tmp" "$SETTINGS"
   if [ -f "$TMUX_CONF" ]; then
     grep -vF -e "$TMUX_LINE" -e "# Claude Code sidebar" "$TMUX_CONF" >"$TMUX_CONF.tmp" || true
@@ -49,6 +58,11 @@ fi
 jq --arg hook "$HOOK" --argjson events "$EVENTS" "$strip_filter | $add_filter" "$SETTINGS" >"$SETTINGS.tmp" &&
   mv "$SETTINGS.tmp" "$SETTINGS"
 echo "Claude Code hooks registered in $SETTINGS"
+
+if [ "$MODE" = "--hooks-only" ]; then
+  echo "Restart running Claude Code sessions to pick up the hooks."
+  exit 0
+fi
 
 touch "$TMUX_CONF"
 if ! grep -qF "$TMUX_LINE" "$TMUX_CONF"; then

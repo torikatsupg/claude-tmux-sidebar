@@ -1,0 +1,12 @@
+{
+  "name": "tmux-sidebar",
+  "description": "Reports Claude Code session status to the claude-tmux-sidebar tmux plugin.",
+  "version": "0.1.0",
+  "author": {
+    "name": "torikatsupg"
+  },
+  "homepage": "https://github.com/torikatsupg/claude-tmux-sidebar",
+  "repository": "https://github.com/torikatsupg/claude-tmux-sidebar",
+  "license": "MIT",
+  "keywords": ["tmux", "sidebar", "status"]
+}
