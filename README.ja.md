@@ -38,7 +38,7 @@ tmux の全ウィンドウ左側に、全 tmux セッションとその中で起
 set -g @plugin 'torikatsupg/claude-tmux-sidebar'
 ```
 
-リリースを固定するなら `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.1.2'`。
+リリースを固定するなら `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.2.0'`。
 
 ### 2. Claude Code の hook
 
