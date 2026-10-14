@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # tmux-side controller for the Claude sidebar.
-#   cts toggle          open/close the sidebar in every window
+#   cts toggle [pane]   open/close the sidebar in every window (pane: where it was toggled from; gets the focus)
 #   cts ensure [win]    add the sidebar to a window if enabled and missing (tmux hooks)
 #   cts fix-width [win] restore the sidebar width after a layout change (tmux hooks)
 #   cts popup [pane]    show the list in a popup instead (pane: where it was opened from)
@@ -49,9 +49,23 @@ fix_width() {
   return 0
 }
 
+open_all() {
+  local origin="${1:-}" pane
+  tmux set -g @cts_enabled on
+  tmux list-windows -a -F '#{window_id}' | while read -r w; do ensure "$w"; done
+  [ -z "$origin" ] && return 0
+  pane=$(sidebar_of "$origin")
+  [ -n "$pane" ] && tmux select-pane -t "$pane"
+  return 0
+}
+
 close_all() {
-  tmux list-panes -a -F '#{pane_id} #{@cts_sidebar}' | awk '$2 == "1" { print $1 }' |
-    while read -r p; do tmux kill-pane -t "$p"; done
+  tmux list-panes -a -F '#{pane_id} #{pane_active} #{@cts_sidebar}' | awk '$3 == "1" { print $1, $2 }' |
+    while read -r p active; do
+      # Give the focus back to the pane the user was in before the sidebar took it.
+      [ "$active" = "1" ] && tmux last-pane -t "$p" 2>/dev/null
+      tmux kill-pane -t "$p"
+    done
 }
 
 case "${1:-}" in
@@ -60,10 +74,9 @@ case "${1:-}" in
       tmux set -g @cts_enabled off
       close_all
     else
-      tmux set -g @cts_enabled on
-      tmux list-windows -a -F '#{window_id}' | while read -r w; do ensure "$w"; done
+      open_all "${2:-}"
     fi ;;
-  on)        tmux set -g @cts_enabled on; tmux list-windows -a -F '#{window_id}' | while read -r w; do ensure "$w"; done ;;
+  on)        open_all "${2:-}" ;;
   off)       tmux set -g @cts_enabled off; close_all ;;
   ensure)    ensure "${2:-}" ;;
   fix-width) fix_width "${2:-}" ;;

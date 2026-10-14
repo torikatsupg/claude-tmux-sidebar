@@ -240,7 +240,9 @@ class App:
         keys = self.keys()
         pane = focused_pane(panes, self.my_window) if self.my_window else None
         focus_key = self.key_for_pane(pane, panes)
-        if (pane, focus_key) != self.focused and focus_key in keys:
+        # The selection is the user's only while the sidebar has the focus; otherwise it mirrors the focused pane.
+        mirror = not POPUP and me and not me["active"]
+        if focus_key in keys and (mirror or (pane, focus_key) != self.focused):
             self.focused = (pane, focus_key)
             self.selected = focus_key
         if self.selected not in keys:
@@ -382,13 +384,25 @@ class App:
             return False
         kind, val = key
         if kind == "group":
-            tmux("switch-client", "-t", f"={val}")
-            return True
-        e = next((e for e in self.sessions if e["session_id"] == val), None)
-        if not e or not e["tmux"]:
-            return False
-        goto_pane(e["pane"])
+            target = f"={val}"
+            leaving = self.leaving(tmux("display", "-p", "-t", target, "#{window_id}").strip())
+            tmux("switch-client", "-t", target)
+        else:
+            e = next((e for e in self.sessions if e["session_id"] == val), None)
+            if not e or not e["tmux"]:
+                return False
+            leaving = self.leaving(e["tmux"]["window_id"])
+            goto_pane(e["pane"])
+        if leaving:
+            # Hand this window's focus back to the pane the user was in, so it isn't on the sidebar when they return.
+            tmux("last-pane", "-t", MY_PANE)
         return True
+
+    def leaving(self, window):
+        """True when jumping to another window while this sidebar has the focus."""
+        if POPUP or not window or window == self.my_window:
+            return False
+        return tmux("display", "-p", "-t", MY_PANE, "#{pane_active}").strip() == "1"
 
     def run(self):
         self.reload()
