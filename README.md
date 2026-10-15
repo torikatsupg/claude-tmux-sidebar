@@ -92,7 +92,7 @@ This registers the hooks and appends `run-shell '.../sidebar.tmux'` to `~/.tmux.
 
 | Key | Action |
 |---|---|
-| `prefix + b` | Toggle the sidebar (in every window) |
+| `prefix + b` | Open the sidebar (in every window) and focus it; when it is already open, focus it; when it has the focus, close it |
 | `prefix + B` | Show the list in a popup (jumps and closes on select) |
 | `prefix + C-n` / `prefix + C-p` | Go to the next / previous Claude that is done or waiting for you |
 | `j` / `k` / `g` / `G` | Move the selection |
@@ -108,7 +108,7 @@ Set them in `~/.tmux.conf` **before** the plugin is loaded (before `run '~/.tmux
 
 ```tmux
 set -g @cts_width 34          # sidebar width
-set -g @cts_toggle_key b      # several keys allowed, e.g. 'b C-s'
+set -g @cts_toggle_key b      # several keys allowed, space-separated
 set -g @cts_popup_key B
 set -g @cts_next_key C-n
 set -g @cts_prev_key C-p
