@@ -46,7 +46,7 @@ With [TPM](https://github.com/tmux-plugins/tpm), add to `~/.tmux.conf`, then pre
 set -g @plugin 'torikatsupg/claude-tmux-sidebar'
 ```
 
-Pinning a release is recommended: `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.3.0'`. You then run a tagged release rather than whatever is on `main`, and nothing changes until you change the tag. Release tags cannot be moved or deleted.
+Pinning a release is recommended: `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.4.0'`. You then run a tagged release rather than whatever is on `main`, and nothing changes until you change the tag. Release tags cannot be moved or deleted.
 
 ### 2. Claude Code hooks
 
@@ -63,7 +63,7 @@ On older Claude Code versions:
 /plugin install tmux-sidebar@torikatsupg
 ```
 
-To pin a release, add the marketplace with the tag: `/plugin marketplace add torikatsupg/claude-tmux-sidebar#v0.3.0`.
+To pin a release, add the marketplace with the tag: `/plugin marketplace add torikatsupg/claude-tmux-sidebar#v0.4.0`.
 
 Restart running Claude Code sessions to pick up the hooks.
 
@@ -78,7 +78,7 @@ Use only one of the two, or every hook runs twice.
 ### Without TPM
 
 ```sh
-git clone --branch v0.3.0 https://github.com/torikatsupg/claude-tmux-sidebar ~/.tmux/plugins/claude-tmux-sidebar
+git clone --branch v0.4.0 https://github.com/torikatsupg/claude-tmux-sidebar ~/.tmux/plugins/claude-tmux-sidebar
 ~/.tmux/plugins/claude-tmux-sidebar/install.sh
 ```
 
