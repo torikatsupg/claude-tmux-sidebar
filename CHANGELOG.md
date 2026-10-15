@@ -4,11 +4,14 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-15
+
 ### Security
 
 - Release binaries carry a build provenance attestation (`gh attestation verify`), and are built without restoring a build cache.
 - CI checks dependencies with `cargo deny` (advisories, licenses, sources); Dependabot also updates Cargo dependencies.
 - The README recommends pinning a release tag.
+- GitHub Actions updated (checkout v7, upload-artifact v7, download-artifact v8, setup-rust-toolchain v2), still pinned by commit SHA.
 
 ## [0.2.0] - 2026-10-14
 
@@ -50,7 +53,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `install.sh` for manual setups, with `--hooks-only` and `--uninstall`.
 - Options: `@cts_width`, `@cts_toggle_key` (several keys allowed), `@cts_popup_key`, `@cts_next_key`, `@cts_prev_key`, `@cts_default`, `@cts_lang` (`en` / `ja`), `@cts_hook_index`.
 
-[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.1.0...v0.1.1
