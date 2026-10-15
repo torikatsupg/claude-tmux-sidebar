@@ -44,7 +44,7 @@ gh attestation verify ~/.tmux/plugins/claude-tmux-sidebar/bin/claude-tmux-sideba
 set -g @plugin 'torikatsupg/claude-tmux-sidebar'
 ```
 
-リリースの固定をおすすめします: `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.2.1'`。`main` の最新ではなくタグの付いたリリースが動き、タグを書き換えるまで何も変わりません。リリースのタグは移動も削除もできません。
+リリースの固定をおすすめします: `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.3.0'`。`main` の最新ではなくタグの付いたリリースが動き、タグを書き換えるまで何も変わりません。リリースのタグは移動も削除もできません。
 
 ### 2. Claude Code の hook
 
@@ -61,7 +61,7 @@ Claude Code の中で `tmux-sidebar` プラグインを入れます:
 /plugin install tmux-sidebar@torikatsupg
 ```
 
-リリースを固定するなら、marketplace をタグ付きで追加します: `/plugin marketplace add torikatsupg/claude-tmux-sidebar#v0.2.1`。
+リリースを固定するなら、marketplace をタグ付きで追加します: `/plugin marketplace add torikatsupg/claude-tmux-sidebar#v0.3.0`。
 
 起動済みの Claude Code は再起動すると hook が有効になります。
 
@@ -76,7 +76,7 @@ Claude Code プラグインを使わない場合は、`~/.claude/settings.json` 
 ### TPM を使わない場合
 
 ```sh
-git clone --branch v0.2.1 https://github.com/torikatsupg/claude-tmux-sidebar ~/.tmux/plugins/claude-tmux-sidebar
+git clone --branch v0.3.0 https://github.com/torikatsupg/claude-tmux-sidebar ~/.tmux/plugins/claude-tmux-sidebar
 ~/.tmux/plugins/claude-tmux-sidebar/install.sh
 ```
 
