@@ -16,6 +16,15 @@ pub struct Model {
     /// Seconds since the epoch, for ages.
     pub now: u64,
     pub height: u16,
+    /// The key help is shown on the last line.
+    pub help: bool,
+}
+
+impl Model {
+    /// The screen line below the list: the help line, or the bottom edge when the help is hidden.
+    pub fn list_end(&self, height: u16) -> u16 {
+        height.saturating_sub(u16::from(self.help))
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -85,11 +94,15 @@ pub fn update(model: Model, msg: Msg) -> (Model, Vec<Effect>) {
             vec![],
         ),
         Msg::Resized { height } => (Model { height, ..model }, vec![]),
-        Msg::Clicked { y } => match rows::at(&model.snapshot.rows, model.height, y) {
-            Some(key) => activate(select(model, Some(key))),
-            None => (model, vec![]),
-        },
+        Msg::Clicked { y } => clicked(model, y),
         Msg::Action(action) => act(model, action),
+    }
+}
+
+fn clicked(model: Model, y: u16) -> (Model, Vec<Effect>) {
+    match rows::at(&model.snapshot.rows, model.list_end(model.height), y) {
+        Some(key) => activate(select(model, Some(key))),
+        None => (model, vec![]),
     }
 }
 
