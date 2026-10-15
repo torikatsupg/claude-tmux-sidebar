@@ -5,3 +5,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+  # Cargo.lock: security fixes and new releases of dependencies (CI checks them with cargo deny).
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly

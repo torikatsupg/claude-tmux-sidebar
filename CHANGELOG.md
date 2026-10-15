@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Security
+
+- Release binaries carry a build provenance attestation (`gh attestation verify`), and are built without restoring a build cache.
+- CI checks dependencies with `cargo deny` (advisories, licenses, sources); Dependabot also updates Cargo dependencies.
+- The README recommends pinning a release tag.
+
 ## [0.2.0] - 2026-10-14
 
 ### Changed

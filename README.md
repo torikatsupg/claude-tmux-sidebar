@@ -26,6 +26,12 @@ A tmux sidebar that lists every tmux session and the [Claude Code](https://claud
 
 The plugin is one Rust binary. The first time the tmux plugin or a Claude Code hook runs, `scripts/fetch-binary.sh` downloads the binary for your platform from the matching GitHub release (verifying its SHA-256) into `bin/`, or builds it with `cargo` when no release binary fits. Claude Code skips the hook events that arrive before the binary is ready.
 
+Release binaries after v0.2.0 carry a [build provenance attestation](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations). To check that a downloaded binary was built by this repository's release workflow:
+
+```sh
+gh attestation verify ~/.tmux/plugins/claude-tmux-sidebar/bin/claude-tmux-sidebar --repo torikatsupg/claude-tmux-sidebar
+```
+
 ## Install
 
 There are two parts: the **tmux plugin** (draws the sidebar) and the **Claude Code hooks** (report each session's status).
@@ -38,7 +44,7 @@ With [TPM](https://github.com/tmux-plugins/tpm), add to `~/.tmux.conf`, then pre
 set -g @plugin 'torikatsupg/claude-tmux-sidebar'
 ```
 
-To pin a release, use `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.2.0'`.
+Pinning a release is recommended: `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.2.0'`. You then run a tagged release rather than whatever is on `main`, and nothing changes until you change the tag. Release tags cannot be moved or deleted.
 
 ### 2. Claude Code hooks
 
@@ -55,6 +61,8 @@ On older Claude Code versions:
 /plugin install tmux-sidebar@torikatsupg
 ```
 
+To pin a release, add the marketplace with the tag: `/plugin marketplace add torikatsupg/claude-tmux-sidebar#v0.2.0`.
+
 Restart running Claude Code sessions to pick up the hooks.
 
 If you prefer not to use the Claude Code plugin, register the hooks in `~/.claude/settings.json` instead (a backup `settings.json.bak.<timestamp>` is made first):
@@ -68,7 +76,7 @@ Use only one of the two, or every hook runs twice.
 ### Without TPM
 
 ```sh
-git clone https://github.com/torikatsupg/claude-tmux-sidebar ~/.tmux/plugins/claude-tmux-sidebar
+git clone --branch v0.2.0 https://github.com/torikatsupg/claude-tmux-sidebar ~/.tmux/plugins/claude-tmux-sidebar
 ~/.tmux/plugins/claude-tmux-sidebar/install.sh
 ```
 

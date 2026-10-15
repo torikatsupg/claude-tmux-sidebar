@@ -26,6 +26,12 @@ tmux の全ウィンドウ左側に、全 tmux セッションとその中で起
 
 本体は Rust の単一バイナリです。tmux プラグインか Claude Code の hook が初めて動いたときに、`scripts/fetch-binary.sh` が対応する GitHub Release から自分の環境向けのバイナリを `bin/` にダウンロードします（SHA-256 を検証）。合うバイナリが無ければ `cargo` でビルドします。バイナリが揃うまでに届いた hook イベントは読み飛ばします。
 
+v0.2.0 より後のリリースのバイナリには [build provenance attestation](https://docs.github.com/ja/actions/security-for-github-actions/using-artifact-attestations) が付きます。ダウンロードしたバイナリがこのリポジトリのリリース workflow でビルドされたものかは次で確認できます:
+
+```sh
+gh attestation verify ~/.tmux/plugins/claude-tmux-sidebar/bin/claude-tmux-sidebar --repo torikatsupg/claude-tmux-sidebar
+```
+
 ## インストール
 
 サイドバーを描く **tmux プラグイン** と、各セッションの状態を書き出す **Claude Code の hook** の 2 つを入れます。
@@ -38,7 +44,7 @@ tmux の全ウィンドウ左側に、全 tmux セッションとその中で起
 set -g @plugin 'torikatsupg/claude-tmux-sidebar'
 ```
 
-リリースを固定するなら `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.2.0'`。
+リリースの固定をおすすめします: `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.2.0'`。`main` の最新ではなくタグの付いたリリースが動き、タグを書き換えるまで何も変わりません。リリースのタグは移動も削除もできません。
 
 ### 2. Claude Code の hook
 
@@ -55,6 +61,8 @@ Claude Code の中で `tmux-sidebar` プラグインを入れます:
 /plugin install tmux-sidebar@torikatsupg
 ```
 
+リリースを固定するなら、marketplace をタグ付きで追加します: `/plugin marketplace add torikatsupg/claude-tmux-sidebar#v0.2.0`。
+
 起動済みの Claude Code は再起動すると hook が有効になります。
 
 Claude Code プラグインを使わない場合は、`~/.claude/settings.json` に直接 hook を登録します（実行前にバックアップ `settings.json.bak.<日時>` を作成）:
@@ -68,7 +76,7 @@ Claude Code プラグインを使わない場合は、`~/.claude/settings.json` 
 ### TPM を使わない場合
 
 ```sh
-git clone https://github.com/torikatsupg/claude-tmux-sidebar ~/.tmux/plugins/claude-tmux-sidebar
+git clone --branch v0.2.0 https://github.com/torikatsupg/claude-tmux-sidebar ~/.tmux/plugins/claude-tmux-sidebar
 ~/.tmux/plugins/claude-tmux-sidebar/install.sh
 ```
 
