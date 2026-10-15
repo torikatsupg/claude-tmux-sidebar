@@ -17,6 +17,8 @@ A tmux sidebar that lists every tmux session and the [Claude Code](https://claud
 | ✓ (cyan) | done | `Stop` |
 | ○ (gray) | idle | `SessionStart`, 60 s without input (`Notification(idle_prompt)`) |
 
+Each row shows the tool in use and how long it has been in that status. A magenta bar on the left edge marks the window you are in.
+
 ## Requirements
 
 - tmux 3.2+
@@ -114,6 +116,7 @@ set -g @cts_next_key C-n
 set -g @cts_prev_key C-p
 set -g @cts_default off       # open the sidebar when tmux starts
 set -g @cts_lang en           # en / ja
+set -g @cts_help on           # show the key help at the bottom
 set -g @cts_hook_index 77     # tmux hook array index (change only on conflicts)
 ```
 

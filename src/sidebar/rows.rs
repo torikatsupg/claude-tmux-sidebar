@@ -6,8 +6,6 @@ use crate::tmux::pane::Pane;
 
 /// The first screen row of the list (below the title and the rule).
 pub const FIRST_ROW: u16 = 2;
-/// Rows kept free at the bottom for the help line.
-const FOOTER_ROWS: u16 = 1;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Row {
@@ -66,14 +64,14 @@ pub fn key_for_pane(rows: &[Row], pane: &Pane) -> RowKey {
         .unwrap_or_else(|| RowKey::Session(pane.session.clone()))
 }
 
-/// Rows with the screen line they are drawn on, for a terminal `height` lines tall.
-pub fn placed(rows: &[Row], height: u16) -> impl Iterator<Item = (u16, &Row)> {
-    (FIRST_ROW..height.saturating_sub(FOOTER_ROWS)).zip(rows)
+/// Rows with the screen line they are drawn on, above screen line `end`.
+pub fn placed(rows: &[Row], end: u16) -> impl Iterator<Item = (u16, &Row)> {
+    (FIRST_ROW..end).zip(rows)
 }
 
 /// The selectable row drawn on screen line `y`.
-pub fn at(rows: &[Row], height: u16, y: u16) -> Option<RowKey> {
-    placed(rows, height)
+pub fn at(rows: &[Row], end: u16, y: u16) -> Option<RowKey> {
+    placed(rows, end)
         .find(|&(line, _)| line == y)
         .and_then(|(_, row)| key(row))
 }

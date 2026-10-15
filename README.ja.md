@@ -17,6 +17,8 @@ tmux の全ウィンドウ左側に、全 tmux セッションとその中で起
 | ✓ (水色) | 完了 | `Stop` |
 | ○ (灰) | 待機 | `SessionStart`、60 秒放置 (`Notification(idle_prompt)`) |
 
+各行の右側には、使用中のツールとその状態になってからの経過時間を表示します。左端のマゼンタのバーは、今いるウィンドウの印です。
+
 ## 必要なもの
 
 - tmux 3.2+
@@ -114,6 +116,7 @@ set -g @cts_next_key C-n
 set -g @cts_prev_key C-p
 set -g @cts_default off       # tmux 起動時に開いておくか
 set -g @cts_lang ja           # en / ja
+set -g @cts_help on           # 下端のキー操作ヘルプを表示
 set -g @cts_hook_index 77     # tmux hook 配列のインデックス（衝突時のみ変更）
 ```
 

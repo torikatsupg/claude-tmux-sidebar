@@ -1,10 +1,9 @@
-//! One Claude session row: status icon, `window:directory`, and the status text on the right.
+//! One Claude session row: status icon, `window:directory`, and the tool and age on the right.
 
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 
-use super::DIM;
-use crate::i18n::Messages;
+use super::{ACCENT, DIM};
 use crate::session::Status;
 use crate::session::live::Claude;
 use crate::sidebar::update::Model;
@@ -23,20 +22,11 @@ pub fn look(status: Status) -> (&'static str, Color) {
     }
 }
 
-fn label(status: Status, messages: &Messages) -> &'static str {
-    match status {
-        Status::Waiting => messages.waiting,
-        Status::Running => messages.running,
-        Status::Done => messages.done,
-        Status::Idle => messages.idle,
-    }
-}
-
-/// ` ● 2:api                     Bash running 3s `
-pub fn line(model: &Model, messages: &Messages, claude: &Claude, width: usize) -> Line<'static> {
+/// `▌● 2:api                             Bash 3s `; the bar marks the window you are in.
+pub fn line(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
     let (_, color) = look(claude.record.state);
     let right = truncate(
-        &status_text(model, messages, claude),
+        &status_text(model, claude),
         width.saturating_sub(MIN_NAME_WIDTH),
     );
     let name = truncate(&name(claude), width.saturating_sub(5 + text::width(&right)));
@@ -46,7 +36,7 @@ pub fn line(model: &Model, messages: &Messages, claude: &Claude, width: usize) -
         .is_some_and(|p| Some(p.window_id) == model.snapshot.window);
     let gap = width.saturating_sub(4 + text::width(&name) + text::width(&right));
     Line::from(vec![
-        Span::raw(" "),
+        marker(here),
         icon(model, claude.record.state),
         Span::raw(" "),
         Span::styled(name, bold_if(here)),
@@ -54,6 +44,15 @@ pub fn line(model: &Model, messages: &Messages, claude: &Claude, width: usize) -
         Span::styled(right, color),
         Span::raw(" "),
     ])
+}
+
+/// The bar on the left edge for the window you are in.
+fn marker(here: bool) -> Span<'static> {
+    if here {
+        Span::styled("▌", ACCENT)
+    } else {
+        Span::raw(" ")
+    }
 }
 
 /// The status icon; a running session spins.
@@ -87,15 +86,12 @@ fn name(claude: &Claude) -> String {
         .map_or_else(|| dir.clone(), |p| format!("{}:{dir}", p.window_index))
 }
 
-/// `[detail ]label age`; the detail (tool name) only while running or waiting.
-fn status_text(model: &Model, messages: &Messages, claude: &Claude) -> String {
+/// `[detail ]age`; the icon already shows the status, and the detail (tool name) is shown only while
+/// running or waiting.
+fn status_text(model: &Model, claude: &Claude) -> String {
     let record = &claude.record;
     let since = record.since.unwrap_or(record.updated_at);
-    let base = format!(
-        "{} {}",
-        label(record.state, messages),
-        age(model.now.saturating_sub(since))
-    );
+    let base = age(model.now.saturating_sub(since));
     let busy =
         matches!(record.state, Status::Running | Status::Waiting) && !record.detail.is_empty();
     if busy {

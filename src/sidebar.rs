@@ -43,6 +43,7 @@ struct Env<'a> {
     ctx: &'a Context,
     me: Option<PaneId>,
     popup: bool,
+    help: bool,
     messages: &'static Messages,
     /// The spinner runs on the clock, not on the number of events.
     started: Instant,
@@ -65,6 +66,7 @@ pub fn run(ctx: &Context, mode: Mode) -> io::Result<()> {
         ctx,
         me,
         popup,
+        help: tmux::global_option("@cts_help").as_deref() != Some("off"),
         messages: i18n::messages(lang.as_deref()),
         started: Instant::now(),
     };
@@ -82,6 +84,7 @@ fn event_loop(terminal: &mut DefaultTerminal, env: &Env<'_>) -> io::Result<()> {
     let height = terminal.size()?.height;
     let model = Model {
         popup: env.popup,
+        help: env.help,
         height,
         now: context::now(),
         ..Model::default()

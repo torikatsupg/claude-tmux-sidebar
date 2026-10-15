@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- `@cts_help` option (`on` / `off`) to hide the key help at the bottom of the sidebar.
+
+### Changed
+
+- The session in the current window is marked with a bar on the left edge, separate from the cursor. The cursor is a background highlight that keeps the row's colors instead of reverse video.
+- Rows no longer repeat the status word (`running`, `waiting`, …) that the icon already shows; the right side shows the tool and the elapsed time.
+- The "none" placeholder and the key help are easier to read: keys are bold, labels are a lighter gray.
+
 ## [0.3.0] - 2026-10-15
 
 ### Changed

@@ -14,6 +14,11 @@ use crate::session::Status;
 mod session;
 
 const DIM: Color = Color::DarkGray;
+/// Readable but quieter than the default text (placeholders, help labels), on dark and light themes.
+const MUTED: Color = Color::Indexed(245);
+const ACCENT: Color = Color::Magenta;
+/// The cursor row's background; the row keeps its own colors on it.
+const CURSOR: Color = Color::Indexed(237);
 const TITLE: &str = "Claude";
 /// Statuses counted in the title bar, in order.
 const COUNTED: [Status; 3] = [Status::Running, Status::Waiting, Status::Done];
@@ -29,20 +34,39 @@ pub fn render(model: &Model, messages: &Messages, frame: &mut Frame) {
 /// The whole screen, one line per terminal row.
 pub fn lines(model: &Model, messages: &Messages, width: u16, height: u16) -> Vec<Line<'static>> {
     let width = usize::from(width);
+    let end = model.list_end(height);
     let body: Vec<Line<'static>> = if model.snapshot.rows.is_empty() {
-        vec![Line::styled(format!(" {}", messages.no_sessions), DIM)]
+        vec![Line::styled(format!(" {}", messages.no_sessions), MUTED)]
     } else {
-        rows::placed(&model.snapshot.rows, height)
+        rows::placed(&model.snapshot.rows, end)
             .map(|(_, row)| row_line(model, messages, row, width))
             .collect()
     };
-    let filler = usize::from(height.saturating_sub(rows::FIRST_ROW + 1)).saturating_sub(body.len());
+    let filler = usize::from(end.saturating_sub(rows::FIRST_ROW)).saturating_sub(body.len());
     [title(model), Line::styled("─".repeat(width), DIM)]
         .into_iter()
         .chain(body)
         .chain(std::iter::repeat_n(Line::default(), filler))
-        .chain([Line::styled(format!(" {}", messages.help), DIM)])
+        .chain(model.help.then(|| help(messages)))
         .collect()
+}
+
+/// ` ⏎ jump  j/k move  q close`: bold keys, muted labels.
+fn help(messages: &Messages) -> Line<'static> {
+    let spans = messages
+        .help
+        .iter()
+        .enumerate()
+        .flat_map(|(i, (key, label))| {
+            let gap = if i == 0 { " " } else { "  " };
+            [
+                Span::raw(gap),
+                Span::styled(*key, Modifier::BOLD),
+                Span::raw(" "),
+                Span::styled(*label, MUTED),
+            ]
+        });
+    Line::from(spans.collect::<Vec<_>>())
 }
 
 fn title(model: &Model) -> Line<'static> {
@@ -60,10 +84,7 @@ fn title(model: &Model) -> Line<'static> {
             .filter(|&n| n > 0)
             .map(|n| Span::styled(format!("{icon}{n} "), color))
     });
-    let title = Span::styled(
-        TITLE,
-        Style::new().fg(Color::Magenta).add_modifier(Modifier::BOLD),
-    );
+    let title = Span::styled(TITLE, Style::new().fg(ACCENT).add_modifier(Modifier::BOLD));
     Line::from(
         [Span::raw(" "), title, Span::raw(" ")]
             .into_iter()
@@ -76,9 +97,12 @@ fn row_line(model: &Model, messages: &Messages, row: &Row, width: usize) -> Line
     let selected = rows::key(row).is_some_and(|k| model.selection.selected.as_ref() == Some(&k));
     let line = match row {
         Row::Gap => Line::default(),
-        Row::Empty => Line::styled(format!("   {}", messages.none), DIM),
+        Row::Empty => Line::styled(
+            format!("   {}", messages.none),
+            Style::new().fg(MUTED).add_modifier(Modifier::ITALIC),
+        ),
         Row::Heading(name) => heading(name, messages),
-        Row::Session(claude) => session::line(model, messages, claude, width),
+        Row::Session(claude) => session::line(model, claude, width),
     };
     if selected {
         highlight(line, width)
@@ -98,15 +122,16 @@ fn heading(name: &GroupName, messages: &Messages) -> Line<'static> {
     ])
 }
 
-/// Reverse video across the full width.
+/// The cursor: a background across the full width, under the row's own colors.
 fn highlight(line: Line<'static>, width: usize) -> Line<'static> {
     let pad = " ".repeat(width.saturating_sub(line.width()));
     let spans = line
         .spans
         .into_iter()
         .chain([Span::raw(pad)])
+        .map(|span| span.patch_style(Style::new().bg(CURSOR)))
         .collect::<Vec<_>>();
-    Line::from(spans).patch_style(Modifier::REVERSED)
+    Line::from(spans)
 }
 
 #[cfg(test)]
