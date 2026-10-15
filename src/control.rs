@@ -27,8 +27,18 @@ fn enabled() -> bool {
     tmux::global_option(ENABLED_OPTION).as_deref() == Some("on")
 }
 
+/// Opens the sidebar, focuses it if it is open, and closes it if it already has the focus.
 pub fn toggle(ctx: &Context, origin: Option<PaneId>) {
-    if enabled() { off() } else { on(ctx, origin) }
+    if !enabled() {
+        return on(ctx, origin);
+    }
+    match origin.and_then(find_pane) {
+        Some(pane) if !pane.sidebar => {
+            ensure(ctx, Some(pane.window_id));
+            focus_sidebar(pane.window_id);
+        }
+        _ => off(),
+    }
 }
 
 /// Opens the sidebar everywhere and focuses the one next to `origin`.
@@ -37,13 +47,18 @@ pub fn on(ctx: &Context, origin: Option<PaneId>) {
     for window in windows() {
         ensure(ctx, Some(window));
     }
-    let sidebar = origin
-        .and_then(|o| tmux::panes().into_iter().find(|p| p.id == o))
-        .and_then(|p| {
-            pane::sidebar_of(&tmux::window_panes(p.window_id), p.window_id).map(|s| s.id)
-        });
-    if let Some(sidebar) = sidebar {
-        tmux::run(&["select-pane", "-t", &sidebar.to_string()]);
+    if let Some(pane) = origin.and_then(find_pane) {
+        focus_sidebar(pane.window_id);
+    }
+}
+
+fn find_pane(id: PaneId) -> Option<Pane> {
+    tmux::panes().into_iter().find(|p| p.id == id)
+}
+
+fn focus_sidebar(window: WindowId) {
+    if let Some(sidebar) = pane::sidebar_of(&tmux::window_panes(window), window) {
+        tmux::run(&["select-pane", "-t", &sidebar.id.to_string()]);
     }
 }
 

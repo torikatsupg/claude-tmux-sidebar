@@ -6,7 +6,7 @@ use crate::tmux::pane::{PaneId, WindowId};
 pub const USAGE: &str = "usage: claude-tmux-sidebar <command>
 
 tmux side:
-  toggle [pane]              open/close the sidebar in every window (pane: where it was toggled from; gets the focus)
+  toggle [pane]              open the sidebar in every window, focus it if open, close it if focused (pane: where it was toggled from)
   on [pane] | off            open / close the sidebar
   ensure [window]            add the sidebar to a window if enabled and missing (tmux hooks)
   fix-width [window]         restore the sidebar width after a layout change (tmux hooks)

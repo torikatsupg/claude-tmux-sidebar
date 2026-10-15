@@ -92,7 +92,7 @@ hook を登録し、`~/.tmux.conf` に `run-shell '.../sidebar.tmux'` を追記�
 
 | キー | 動作 |
 |---|---|
-| `prefix + b` | サイドバー開閉（全ウィンドウ） |
+| `prefix + b` | サイドバーを開いてフォーカス（全ウィンドウ）。開いていればフォーカス、フォーカス中なら閉じる |
 | `prefix + B` | ポップアップで一覧（選択するとジャンプして閉じる） |
 | `prefix + C-n` / `prefix + C-p` | 次 / 前の完了・承認待ちの Claude へ移動 |
 | `j` / `k` / `g` / `G` | 選択移動 |
@@ -108,7 +108,7 @@ hook を登録し、`~/.tmux.conf` に `run-shell '.../sidebar.tmux'` を追記�
 
 ```tmux
 set -g @cts_width 34          # サイドバー幅
-set -g @cts_toggle_key b      # 複数指定可（例: 'b C-s'）
+set -g @cts_toggle_key b      # 複数指定可（空白区切り）
 set -g @cts_popup_key B
 set -g @cts_next_key C-n
 set -g @cts_prev_key C-p

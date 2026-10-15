@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- The toggle key now focuses the sidebar when it is open but not focused, and closes it only when it already has the focus.
+- The README no longer suggests `C-s` as a toggle key, since it is tmux-resurrect's default save key.
+
 ## [0.2.1] - 2026-10-15
 
 ### Security
