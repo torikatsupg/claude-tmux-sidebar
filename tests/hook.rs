@@ -74,3 +74,27 @@ fn ignores_garbage_and_unsafe_session_ids() -> io::Result<()> {
     assert!(!dir.path().join("escape.json").exists());
     Ok(())
 }
+
+#[test]
+fn records_the_prompt_branch_and_context_usage() -> io::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let state_dir = dir.path().join("state");
+    let transcript = dir.path().join("t.jsonl");
+    std::fs::write(
+        &transcript,
+        r#"{"type":"assistant","gitBranch":"feat/x","requestedModel":"claude-opus-5-5[1m]","message":{"model":"claude-opus-5-5","usage":{"input_tokens":2,"cache_creation_input_tokens":8,"cache_read_input_tokens":249990}}}"#,
+    )?;
+    let payload = serde_json::json!({
+        "hook_event_name": "UserPromptSubmit",
+        "session_id": "ci",
+        "prompt": "add a\ntest",
+        "transcript_path": transcript,
+    });
+    hook(&state_dir, &payload.to_string())?;
+    assert_eq!(field(&state_dir, "prompt").as_deref(), Some("add a test"));
+    assert_eq!(field(&state_dir, "branch").as_deref(), Some("feat/x"));
+    let bytes = std::fs::read(state_dir.join("ci.json"))?;
+    let record: Value = serde_json::from_slice(&bytes)?;
+    assert_eq!(record.get("context").and_then(Value::as_u64), Some(25));
+    Ok(())
+}

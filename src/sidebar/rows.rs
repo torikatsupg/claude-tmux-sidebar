@@ -1,4 +1,4 @@
-//! The list the sidebar shows: one row per group heading, Claude session, placeholder or gap.
+//! The list the sidebar shows: one row per group heading, Claude session, its detail line, placeholder or gap.
 
 use crate::listing::{Group, GroupName};
 use crate::session::live::Claude;
@@ -12,6 +12,8 @@ pub enum Row {
     Gap,
     Heading(GroupName),
     Session(Claude),
+    /// The line under a Claude session: its last prompt and context usage.
+    Detail(Claude),
     /// A tmux session without Claude.
     Empty,
 }
@@ -32,9 +34,18 @@ pub fn rows(groups: &[Group]) -> Vec<Row> {
             let empty = g.claudes.is_empty().then_some(Row::Empty);
             gap.into_iter()
                 .chain([Row::Heading(g.name.clone())])
-                .chain(g.claudes.iter().cloned().map(Row::Session))
+                .chain(g.claudes.iter().flat_map(session_rows))
                 .chain(empty)
         })
+        .collect()
+}
+
+/// A Claude session, followed by its detail line when there is anything to show.
+fn session_rows(claude: &Claude) -> Vec<Row> {
+    let detail = !claude.record.prompt.is_empty() || claude.record.context.is_some();
+    [Row::Session(claude.clone())]
+        .into_iter()
+        .chain(detail.then(|| Row::Detail(claude.clone())))
         .collect()
 }
 
@@ -43,7 +54,15 @@ pub fn key(row: &Row) -> Option<RowKey> {
     match row {
         Row::Heading(GroupName::Session(name)) => Some(RowKey::Session(name.clone())),
         Row::Session(c) => Some(RowKey::Claude(c.record.session_id.clone())),
-        Row::Heading(GroupName::Outside) | Row::Gap | Row::Empty => None,
+        Row::Heading(GroupName::Outside) | Row::Detail(_) | Row::Gap | Row::Empty => None,
+    }
+}
+
+/// The selectable row a line belongs to: a detail line belongs to its session.
+pub fn owner(row: &Row) -> Option<RowKey> {
+    match row {
+        Row::Detail(c) => Some(RowKey::Claude(c.record.session_id.clone())),
+        _ => key(row),
     }
 }
 
@@ -73,7 +92,7 @@ pub fn placed(rows: &[Row], end: u16) -> impl Iterator<Item = (u16, &Row)> {
 pub fn at(rows: &[Row], end: u16, y: u16) -> Option<RowKey> {
     placed(rows, end)
         .find(|&(line, _)| line == y)
-        .and_then(|(_, row)| key(row))
+        .and_then(|(_, row)| owner(row))
 }
 
 #[cfg(test)]
@@ -85,6 +104,7 @@ mod tests {
         let claude = Claude {
             record: Record {
                 session_id: "c".to_owned(),
+                prompt: "fix it".to_owned(),
                 ..Record::default()
             },
             pane: None,
@@ -111,7 +131,8 @@ mod tests {
                 Row::Empty,
                 Row::Gap,
                 Row::Heading(GroupName::Outside),
-                Row::Session(_)
+                Row::Session(_),
+                Row::Detail(_)
             ]
         ));
         assert_eq!(
@@ -131,6 +152,10 @@ mod tests {
             Some(RowKey::Session("a".to_owned()))
         );
         assert_eq!(at(&rows, 20, FIRST_ROW + 1), None);
+        assert_eq!(
+            at(&rows, 20, FIRST_ROW + 5),
+            Some(RowKey::Claude("c".to_owned()))
+        );
         assert_eq!(at(&rows, 4, FIRST_ROW + 4), None);
     }
 }

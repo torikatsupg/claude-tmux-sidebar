@@ -43,12 +43,11 @@ fn pane(spec: &str) -> Result<Grid, String> {
     let offset = |s: &str| s.parse::<usize>().map_err(|e| format!("{spec}: {e}"));
     let (ox, oy) = (offset(x)?, offset(y)?);
     let text = fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
-    Ok(text
-        .trim_end_matches('\n')
-        .split('\n')
+    Ok(ansi::lines(text.trim_end_matches('\n'))
+        .into_iter()
         .enumerate()
-        .flat_map(|(y, line)| {
-            ansi::line(line)
+        .flat_map(|(y, cells)| {
+            cells
                 .into_iter()
                 .map(move |(x, cell)| ((ox + x, oy + y), cell))
         })

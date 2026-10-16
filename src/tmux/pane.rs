@@ -42,6 +42,8 @@ pub struct Pane {
     pub session: String,
     pub window_index: u32,
     pub pane_index: u32,
+    /// How many windows the pane's session has.
+    pub session_windows: u32,
     pub window_id: WindowId,
     pub sidebar: bool,
     pub active: bool,
@@ -51,7 +53,7 @@ pub struct Pane {
 
 /// The `list-panes -F` format that [`parse`] reads.
 pub const FORMAT: &str = "#{pane_id}\t#{session_name}\t#{window_index}\t#{pane_index}\t#{window_id}\t\
-                          #{@cts_sidebar}\t#{pane_active}\t#{pane_last}\t#{window_active}";
+                          #{@cts_sidebar}\t#{pane_active}\t#{pane_last}\t#{window_active}\t#{session_windows}";
 
 /// Parses `list-panes -F FORMAT` output, skipping malformed lines.
 pub fn parse(output: &str) -> Vec<Pane> {
@@ -70,6 +72,7 @@ fn parse_line(line: &str) -> Option<Pane> {
         active,
         last,
         window_active,
+        session_windows,
     ] = fields.as_slice()
     else {
         return None;
@@ -79,6 +82,7 @@ fn parse_line(line: &str) -> Option<Pane> {
         session: (*session).to_owned(),
         window_index: window_index.parse().ok()?,
         pane_index: pane_index.parse().ok()?,
+        session_windows: session_windows.parse().ok()?,
         window_id: WindowId::parse(window_id)?,
         sidebar: *sidebar == "1",
         active: *active == "1",
@@ -116,6 +120,7 @@ pub mod fixture {
             session: "s".to_owned(),
             window_index: window,
             pane_index: id,
+            session_windows: 1,
             window_id: WindowId(window),
             sidebar: false,
             active: false,
@@ -145,13 +150,13 @@ mod tests {
 
     #[test]
     fn parses_list_panes_output() {
-        let panes = parse("%1\twork\t2\t0\t@4\t\t1\t0\t1\n%2\twork\t2\t1\t@4\t1\t0\t1\t1\nbroken");
+        let panes =
+            parse("%1\twork\t2\t0\t@4\t\t1\t0\t1\t3\n%2\twork\t2\t1\t@4\t1\t0\t1\t1\t3\nbroken");
         assert_eq!(panes.len(), 2);
-        assert!(
-            panes
-                .first()
-                .is_some_and(|p| p.active && !p.sidebar && p.window_index == 2)
-        );
+        assert!(panes.first().is_some_and(|p| p.active
+            && !p.sidebar
+            && p.window_index == 2
+            && p.session_windows == 3));
         assert!(panes.get(1).is_some_and(|p| p.sidebar && p.last));
     }
 

@@ -37,7 +37,7 @@ Press `prefix + b` to open the sidebar. See [Requirements](#requirements) and [I
 | ✓ (cyan) | done | `Stop` |
 | ○ (gray) | idle | `SessionStart`, 60 s without input (`Notification(idle_prompt)`) |
 
-Each row shows the tool in use and how long it has been in that status. A magenta bar on the left edge marks the window you are in.
+Each session shows its directory and git branch, with the tool in use and how long it has been in that status on the right. The line below shows the last prompt you sent and how full the context window is (yellow from 50%, red from 80%). The window index (`1:api`) appears only when the tmux session has more than one window. A magenta bar on the left edge marks the window you are in.
 
 ## Requirements
 
@@ -152,7 +152,7 @@ One binary, `claude-tmux-sidebar`, does everything; `bin/cts` and `bin/cts-hook`
 
 ## Privacy
 
-Everything stays on your machine. State files hold the session ID, working directory, tool name and tmux pane, and are readable only by you.
+Everything stays on your machine. State files hold the session ID, working directory, tool name, tmux pane, git branch, context usage and the first 200 characters of your last prompt, and are readable only by you. The git branch and context usage are read from the end of the session's transcript.
 
 For debugging, start Claude with `CTS_DEBUG=1` to append raw hook payloads to `~/.cache/claude-tmux-sidebar/debug.log`. **The log contains your prompts and tool inputs** — delete it when done and check it before sharing.
 
