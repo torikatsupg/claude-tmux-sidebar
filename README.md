@@ -24,91 +24,20 @@ Run several Claude Code sessions in parallel across tmux and you soon lose track
    /plugin install tmux-sidebar --marketplace torikatsupg/claude-tmux-sidebar
    ```
 
-Press `prefix + b` to open the sidebar. See [Requirements](#requirements) and [Install](#install) for installing without TPM, older Claude Code versions, registering the hooks without the Claude Code plugin, and uninstalling.
+Press `prefix + b` to open the sidebar. For other ways to install, see [Install](#install).
 
 ## Status
 
 ![The sidebar showing sessions in each status](docs/screenshot.svg)
 
-| Icon | Status | Claude Code hook |
+| Icon | Status | When |
 |---|---|---|
-| ⠹ (green) | running | `UserPromptSubmit` / `PreToolUse` / `PostToolUse`, or `Stop` while background subagents, shells or monitors are still running |
-| ◆ (yellow) | waiting for you | `PermissionRequest` / `Notification(permission_prompt)` / `PreToolUse(AskUserQuestion)` |
-| ✓ (cyan) | done | `Stop` with no background task running |
-| ○ (gray) | idle | `SessionStart`, 60 s without input (`Notification(idle_prompt)`) |
+| ⠹ (green) | running | Claude is working, or subagents, shells or monitors it started in the background still are |
+| ◆ (yellow) | waiting for you | Claude asks for approval or asks you a question |
+| ✓ (cyan) | done | The turn has ended and nothing is left running |
+| ○ (gray) | idle | Just started, or 60 s without input |
 
 Each session shows its directory and git branch, with the tool in use and how long it has been in that status on the right. The line below shows the last prompt you sent and how full the context window is (yellow from 50%, red from 80%). The window index (`1:api`) appears only when the tmux session has more than one window. A magenta bar on the left edge marks the window you are in.
-
-## Requirements
-
-- tmux 3.2+
-- Claude Code
-- macOS or Linux (arm64 / x86_64), with `curl` to download the prebuilt binary — or a [Rust toolchain](https://rustup.rs) to build it
-- `jq`, only for `install.sh`
-
-The plugin is one Rust binary. The first time the tmux plugin or a Claude Code hook runs, `scripts/fetch-binary.sh` downloads the binary for your platform from the matching GitHub release (verifying its SHA-256) into `bin/`, or builds it with `cargo` when no release binary fits. Claude Code skips the hook events that arrive before the binary is ready.
-
-Release binaries after v0.2.0 carry a [build provenance attestation](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations). To check that a downloaded binary was built by this repository's release workflow:
-
-```sh
-gh attestation verify ~/.tmux/plugins/claude-tmux-sidebar/bin/claude-tmux-sidebar --repo torikatsupg/claude-tmux-sidebar
-```
-
-## Install
-
-There are two parts: the **tmux plugin** (draws the sidebar) and the **Claude Code hooks** (report each session's status).
-
-### 1. tmux plugin
-
-With [TPM](https://github.com/tmux-plugins/tpm), add to `~/.tmux.conf`, then press `prefix + I`:
-
-```tmux
-set -g @plugin 'torikatsupg/claude-tmux-sidebar'
-```
-
-Pinning a release is recommended: `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.7.0'`. You then run a tagged release rather than whatever is on `main`, and nothing changes until you change the tag. Release tags cannot be moved or deleted.
-
-### 2. Claude Code hooks
-
-Install the `tmux-sidebar` plugin from inside Claude Code:
-
-```
-/plugin install tmux-sidebar --marketplace torikatsupg/claude-tmux-sidebar
-```
-
-On older Claude Code versions:
-
-```
-/plugin marketplace add torikatsupg/claude-tmux-sidebar
-/plugin install tmux-sidebar@torikatsupg
-```
-
-To pin a release, add the marketplace with the tag: `/plugin marketplace add torikatsupg/claude-tmux-sidebar#v0.7.0`.
-
-Restart running Claude Code sessions to pick up the hooks.
-
-If you prefer not to use the Claude Code plugin, register the hooks in `~/.claude/settings.json` instead (a backup `settings.json.bak.<timestamp>` is made first):
-
-```sh
-~/.tmux/plugins/claude-tmux-sidebar/install.sh --hooks-only
-```
-
-Use only one of the two, or every hook runs twice.
-
-### Without TPM
-
-```sh
-git clone --branch v0.7.0 https://github.com/torikatsupg/claude-tmux-sidebar ~/.tmux/plugins/claude-tmux-sidebar
-~/.tmux/plugins/claude-tmux-sidebar/install.sh
-```
-
-This registers the hooks and appends `run-shell '.../sidebar.tmux'` to `~/.tmux.conf` (and loads it right away when run inside tmux).
-
-### Uninstall
-
-- TPM: remove the `@plugin` line and press `prefix + alt + u`.
-- Claude Code plugin: `/plugin uninstall tmux-sidebar@torikatsupg`.
-- `install.sh`: run `./install.sh --uninstall`.
 
 ## Usage
 
@@ -142,49 +71,57 @@ set -g @cts_hook_index 77     # tmux hook array index (change only on conflicts)
 
 Avoid keys tmux already binds (e.g. `C-b` is `send-prefix`): the plugin's binding replaces them.
 
-## How it works
+## Requirements
 
-One binary, `claude-tmux-sidebar`, does everything; `bin/cts` and `bin/cts-hook` are small shell entry points for it.
+- tmux 3.2+
+- Claude Code
+- macOS or Linux (arm64 / x86_64), with `curl` to download the prebuilt binary — or a [Rust toolchain](https://rustup.rs) to build it
+- `jq`, only for `install.sh`
 
-- `claude-tmux-sidebar hook` runs on each Claude Code hook and writes the status, `$TMUX_PANE` and Claude's PID to `~/.cache/claude-tmux-sidebar/<session_id>.json`. `SessionEnd` removes the file.
-- `claude-tmux-sidebar toggle`, `ensure`, `fix-width`, … control tmux: tmux hooks such as `after-new-window` add a full-height pane on the left of each window and restore its width after layout changes. Closing the sidebar restores the window's layout from before it opened.
-- `claude-tmux-sidebar sidebar` draws the list and cleans up state files whose pane or process is gone. It closes itself in a window where only the sidebar is left.
+On first run, the plugin downloads the binary for your platform from the matching GitHub release and checks its SHA-256, or builds it with `cargo` when no release binary fits. Release binaries carry a [build provenance attestation](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations), which you can check with:
+
+```sh
+gh attestation verify ~/.tmux/plugins/claude-tmux-sidebar/bin/claude-tmux-sidebar --repo torikatsupg/claude-tmux-sidebar
+```
+
+## Install
+
+There are two parts: the **tmux plugin** draws the sidebar, and the **Claude Code hooks** report each session's status. The [Quick start](#quick-start) installs both; for other setups:
+
+- **Follow `main` instead of a release**: `set -g @plugin 'torikatsupg/claude-tmux-sidebar'`. Pinning a tag is recommended: nothing changes until you change the tag, and release tags cannot be moved or deleted.
+- **Pin the Claude Code plugin to a release**: `/plugin marketplace add torikatsupg/claude-tmux-sidebar#v0.7.0`, then `/plugin install tmux-sidebar@torikatsupg`. The same two commands without the tag also work on Claude Code versions without `--marketplace`.
+- **Hooks without the Claude Code plugin**: `~/.tmux/plugins/claude-tmux-sidebar/install.sh --hooks-only` registers them in `~/.claude/settings.json` (backed up first as `settings.json.bak.<timestamp>`). Use this or the plugin, not both, or every hook runs twice.
+- **Without TPM**:
+
+  ```sh
+  git clone --branch v0.7.0 https://github.com/torikatsupg/claude-tmux-sidebar ~/.tmux/plugins/claude-tmux-sidebar
+  ~/.tmux/plugins/claude-tmux-sidebar/install.sh
+  ```
+
+  This registers the hooks and appends `run-shell '.../sidebar.tmux'` to `~/.tmux.conf` (and loads it right away when run inside tmux).
+
+Restart running Claude Code sessions to pick up the hooks.
+
+### Uninstall
+
+- TPM: remove the `@plugin` line and press `prefix + alt + u`.
+- Claude Code plugin: `/plugin uninstall tmux-sidebar@torikatsupg`.
+- `install.sh`: run `./install.sh --uninstall`.
 
 ## Privacy
 
-Everything stays on your machine. State files hold the session ID, working directory, tool name, tmux pane, git branch, context usage and the first 200 characters of your last prompt, and are readable only by you. The git branch and context usage are read from the end of the session's transcript.
+Everything stays on your machine. Each Claude session's status is kept in `~/.cache/claude-tmux-sidebar/<session_id>.json`, readable only by you and removed when the session ends. It holds the session ID, working directory, tool name, tmux pane, Claude's process ID, git branch, context usage and the first 200 characters of your last prompt. The git branch and context usage are read from the end of the session's transcript.
 
 For debugging, start Claude with `CTS_DEBUG=1` to append raw hook payloads to `~/.cache/claude-tmux-sidebar/debug.log`. **The log contains your prompts and tool inputs** — delete it when done and check it before sharing.
 
 ## Limitations
 
-- A turn interrupted with Esc does not fire `Stop`, so it stays "running" until `idle_prompt` turns it idle 60 seconds later.
+- A turn interrupted with Esc stays "running" until it turns idle 60 seconds later.
 - The sidebar is not added to a zoomed window (it would unzoom it); it is added on the next visit.
 
-## Development
+## Contributing
 
-Requires a Rust toolchain (the version is pinned in `rust-toolchain.toml`), [shellcheck](https://www.shellcheck.net) and [shfmt](https://github.com/mvdan/sh).
-
-```sh
-cargo xtask ci                 # rustfmt, clippy, tests, shellcheck, shfmt and module size limits (what CI runs)
-scripts/fetch-binary.sh --build  # build bin/claude-tmux-sidebar from this checkout for a live tmux
-scripts/screenshot.sh          # regenerate docs/screenshot.svg (scripts/screenshot.sh ja for the Japanese one)
-```
-
-Code layout (`src/`): pure modules turn values into values, and side effects stay at the edges.
-
-| Module | Role |
-|---|---|
-| `cli`, `lib`, `main` | argument parsing and dispatch |
-| `tmux`, `session::store`, `process` | side effects: the tmux server, state files, other processes |
-| `hook` | hook payload → status transition (`transition` is a pure state machine) |
-| `control` | opening / closing sidebars and restoring layouts |
-| `sidebar` | the list UI: `update` is a pure `(model, msg) → (model, effects)` function, `view` renders, `effect` runs effects |
-| `listing`, `jump` | grouping in tmux order, next / previous done or waiting session |
-
-Style rules, enforced by clippy (`Cargo.toml` `[workspace.lints]`, `clippy.toml`) and `cargo xtask ci`: no `unwrap` / `expect` / `panic` / indexing / `as` casts, functions of at most 30 lines, modules of at most 200 lines, and iterator adapters (`map`, `filter`, `fold`) over mutable loops.
-
-To release, bump `version` in `Cargo.toml`, `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`, add the section to `CHANGELOG.md`, merge to `main`, and run the **Release** workflow from the Actions tab. It builds the binaries for macOS and Linux (arm64 / x86_64), tags `v<version>` and publishes a GitHub release with them; only the repository owner can run it.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how it works, the development setup and the release steps.
 
 ## License
 
