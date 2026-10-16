@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-16
+
 ### Added
 
 - Each session has a second line with the last prompt you sent and how full the context window is (yellow from 50%, red from 80%). Models with a 1M context window (`[1m]`, Fable, Mythos) are counted against 1M tokens.
@@ -81,7 +83,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `install.sh` for manual setups, with `--hooks-only` and `--uninstall`.
 - Options: `@cts_width`, `@cts_toggle_key` (several keys allowed), `@cts_popup_key`, `@cts_next_key`, `@cts_prev_key`, `@cts_default`, `@cts_lang` (`en` / `ja`), `@cts_hook_index`.
 
-[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.2.0...v0.2.1
