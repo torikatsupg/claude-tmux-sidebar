@@ -36,12 +36,28 @@ say() { # pane-name line...
 
 pane_id() { t display -p -t "$1" '#{pane_id}'; }
 
+session_file() { # target kind: a per-session file of the demo (prompt or transcript)
+    echo "$CTS_DEMO_DIR/$2/demo-$(pane_id "$1" | tr -d %)"
+}
+
+details() { # target branch context_percent prompt: what the session's hooks report besides the status
+    mkdir -p "$CTS_DEMO_DIR/prompt" "$CTS_DEMO_DIR/transcript"
+    printf '%s' "$4" >"$(session_file "$1" prompt)"
+    # One assistant entry, as Claude Code writes it: the hook reads the branch and token usage from it.
+    jq -nc --arg branch "$2" --argjson tokens "$(($3 * 2000))" \
+        '{type:"assistant", gitBranch:$branch, message:{model:"claude-opus-5-5", usage:{input_tokens:$tokens}}}' \
+        >"$(session_file "$1" transcript)"
+}
+
 hook() { # target event [tool] [notification_type]
-    local pane cwd
+    local pane cwd prompt=""
     pane=$(pane_id "$1")
     cwd="/home/you/src/$(t display -p -t "$1" '#{window_name}')"
+    [ "$2" = UserPromptSubmit ] && prompt=$(cat "$(session_file "$1" prompt)" 2>/dev/null)
     jq -nc --arg e "$2" --arg tool "${3:-}" --arg kind "${4:-}" --arg id "demo-${pane#%}" --arg cwd "$cwd" \
-        '{hook_event_name:$e, session_id:$id, tool_name:$tool, notification_type:$kind, cwd:$cwd}' |
+        --arg prompt "$prompt" --arg transcript "$(session_file "$1" transcript)" \
+        '{hook_event_name:$e, session_id:$id, tool_name:$tool, notification_type:$kind, cwd:$cwd,
+          prompt:$prompt, transcript_path:$transcript}' |
         TMUX="$(t display -p '#{socket_path}'),0,0" TMUX_PANE="$pane" "$BIN" hook
 }
 
@@ -88,6 +104,10 @@ scene() {
     window oss cli '~/src/cli' '' '> Add a --json flag to the list command' '' '● Read(src/list.rs)'
     window oss site '~/src/site'
 
+    details work:api retry-backoff 34 'Add retry with backoff to the HTTP client'
+    details work:web bundler 61 'Upgrade the bundler and fix the build'
+    details work:docs main 22 'Proofread the install guide'
+    details oss:cli json-flag 47 'Add a --json flag to the list command'
     hook work:api SessionStart && hook work:api UserPromptSubmit && hook work:api PreToolUse Edit
     hook work:web SessionStart && hook work:web UserPromptSubmit && hook work:web PreToolUse Edit
     hook work:docs SessionStart && hook work:docs UserPromptSubmit && hook work:docs Stop

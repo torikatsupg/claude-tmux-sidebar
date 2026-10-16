@@ -24,91 +24,20 @@ tmux で Claude Code を何本も並行して動かしていると、どれが�
    /plugin install tmux-sidebar --marketplace torikatsupg/claude-tmux-sidebar
    ```
 
-`prefix + b` でサイドバーが開きます。TPM を使わない入れ方、古い Claude Code での手順、Claude Code プラグインを使わない hook の登録、アンインストールは [必要なもの](#必要なもの) と [インストール](#インストール) を参照してください。
+`prefix + b` でサイドバーが開きます。ほかの入れ方は [インストール](#インストール) を参照してください。
 
 ## 状態表示
 
 ![各状態のセッションを表示したサイドバー](docs/screenshot-ja.svg)
 
-| 表示 | 状態 | 元になる Claude Code hook |
+| 表示 | 状態 | どんなとき |
 |---|---|---|
-| ⠹ (緑) | 稼働中 | `UserPromptSubmit` / `PreToolUse` / `PostToolUse`、またはバックグラウンドのサブエージェント・shell・monitor が動いている間の `Stop` |
-| ◆ (黄) | 承認待ち・質問待ち | `PermissionRequest` / `Notification(permission_prompt)` / `PreToolUse(AskUserQuestion)` |
-| ✓ (水色) | 完了 | バックグラウンドタスクが残っていない `Stop` |
-| ○ (灰) | 待機 | `SessionStart`、60 秒放置 (`Notification(idle_prompt)`) |
+| ⠹ (緑) | 稼働中 | Claude が作業中、またはバックグラウンドで起動したサブエージェント・shell・monitor がまだ動いている |
+| ◆ (黄) | 承認待ち・質問待ち | Claude が承認を求めている、または質問している |
+| ✓ (水色) | 完了 | ターンが終わり、動いているものが残っていない |
+| ○ (灰) | 待機 | 起動直後、または 60 秒入力がない |
 
 各セッションにはディレクトリと git ブランチを表示し、右側に使用中のツールとその状態になってからの経過時間を表示します。下の行には最後に送ったプロンプトと context window の使用率を表示します（50% から黄色、80% から赤）。ウィンドウ番号（`1:api`）は、その tmux セッションにウィンドウが 2 つ以上あるときだけ付きます。左端のマゼンタのバーは、今いるウィンドウの印です。
-
-## 必要なもの
-
-- tmux 3.2+
-- Claude Code
-- macOS または Linux（arm64 / x86_64）。ビルド済みバイナリのダウンロードに `curl`、または自前でビルドするなら [Rust ツールチェーン](https://rustup.rs)
-- `jq`（`install.sh` を使う場合のみ）
-
-本体は Rust の単一バイナリです。tmux プラグインか Claude Code の hook が初めて動いたときに、`scripts/fetch-binary.sh` が対応する GitHub Release から自分の環境向けのバイナリを `bin/` にダウンロードします（SHA-256 を検証）。合うバイナリが無ければ `cargo` でビルドします。バイナリが揃うまでに届いた hook イベントは読み飛ばします。
-
-v0.2.0 より後のリリースのバイナリには [build provenance attestation](https://docs.github.com/ja/actions/security-for-github-actions/using-artifact-attestations) が付きます。ダウンロードしたバイナリがこのリポジトリのリリース workflow でビルドされたものかは次で確認できます:
-
-```sh
-gh attestation verify ~/.tmux/plugins/claude-tmux-sidebar/bin/claude-tmux-sidebar --repo torikatsupg/claude-tmux-sidebar
-```
-
-## インストール
-
-サイドバーを描く **tmux プラグイン** と、各セッションの状態を書き出す **Claude Code の hook** の 2 つを入れます。
-
-### 1. tmux プラグイン
-
-[TPM](https://github.com/tmux-plugins/tpm) を使う場合、`~/.tmux.conf` に追記して `prefix + I`:
-
-```tmux
-set -g @plugin 'torikatsupg/claude-tmux-sidebar'
-```
-
-リリースの固定をおすすめします: `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.7.0'`。`main` の最新ではなくタグの付いたリリースが動き、タグを書き換えるまで何も変わりません。リリースのタグは移動も削除もできません。
-
-### 2. Claude Code の hook
-
-Claude Code の中で `tmux-sidebar` プラグインを入れます:
-
-```
-/plugin install tmux-sidebar --marketplace torikatsupg/claude-tmux-sidebar
-```
-
-古い Claude Code の場合:
-
-```
-/plugin marketplace add torikatsupg/claude-tmux-sidebar
-/plugin install tmux-sidebar@torikatsupg
-```
-
-リリースを固定するなら、marketplace をタグ付きで追加します: `/plugin marketplace add torikatsupg/claude-tmux-sidebar#v0.7.0`。
-
-起動済みの Claude Code は再起動すると hook が有効になります。
-
-Claude Code プラグインを使わない場合は、`~/.claude/settings.json` に直接 hook を登録します（実行前にバックアップ `settings.json.bak.<日時>` を作成）:
-
-```sh
-~/.tmux/plugins/claude-tmux-sidebar/install.sh --hooks-only
-```
-
-両方入れると hook が 2 回ずつ走るので、どちらか一方にしてください。
-
-### TPM を使わない場合
-
-```sh
-git clone --branch v0.7.0 https://github.com/torikatsupg/claude-tmux-sidebar ~/.tmux/plugins/claude-tmux-sidebar
-~/.tmux/plugins/claude-tmux-sidebar/install.sh
-```
-
-hook を登録し、`~/.tmux.conf` に `run-shell '.../sidebar.tmux'` を追記します（tmux の中で実行した場合はその場で読み込みます）。
-
-### アンインストール
-
-- TPM: `@plugin` 行を消して `prefix + alt + u`
-- Claude Code プラグイン: `/plugin uninstall tmux-sidebar@torikatsupg`
-- `install.sh`: `./install.sh --uninstall`
 
 ## 操作
 
@@ -142,49 +71,57 @@ set -g @cts_hook_index 77     # tmux hook 配列のインデックス（衝突�
 
 tmux が既に割り当てているキー（例: `C-b` は `send-prefix`）を指定すると、プラグイン側の割り当てで上書きされます。
 
-## 仕組み
+## 必要なもの
 
-すべて 1 つのバイナリ `claude-tmux-sidebar` が担い、`bin/cts` と `bin/cts-hook` はその入口の小さなシェルスクリプトです。
+- tmux 3.2+
+- Claude Code
+- macOS または Linux（arm64 / x86_64）。ビルド済みバイナリのダウンロードに `curl`、または自前でビルドするなら [Rust ツールチェーン](https://rustup.rs)
+- `jq`（`install.sh` を使う場合のみ）
 
-- `claude-tmux-sidebar hook`: Claude Code の各 hook から呼ばれ、`~/.cache/claude-tmux-sidebar/<session_id>.json` に状態・`$TMUX_PANE`・Claude の PID を書きます。`SessionEnd` で削除します。
-- `claude-tmux-sidebar toggle` / `ensure` / `fix-width` など: tmux 側の制御。`after-new-window` などの tmux hook でウィンドウ左端に全高ペインを足し、レイアウト変更時は幅を戻します。サイドバーを閉じると、開く前のレイアウトに戻します。
-- `claude-tmux-sidebar sidebar`: 一覧の描画。ペインが消えた・プロセスが死んだセッションの状態ファイルは掃除します。サイドバーしか残っていないウィンドウでは自分を閉じます。
+初回の起動時に、対応する GitHub Release から自分の環境向けのバイナリをダウンロードし、SHA-256 を検証します。合うバイナリが無ければ `cargo` でビルドします。リリースのバイナリには [build provenance attestation](https://docs.github.com/ja/actions/security-for-github-actions/using-artifact-attestations) が付いていて、次で確認できます:
+
+```sh
+gh attestation verify ~/.tmux/plugins/claude-tmux-sidebar/bin/claude-tmux-sidebar --repo torikatsupg/claude-tmux-sidebar
+```
+
+## インストール
+
+サイドバーを描く **tmux プラグイン** と、各セッションの状態を書き出す **Claude Code の hook** の 2 つを入れます。[クイックスタート](#クイックスタート) で両方入ります。それ以外の入れ方:
+
+- **リリースではなく `main` を追う**: `set -g @plugin 'torikatsupg/claude-tmux-sidebar'`。タグでの固定をおすすめします。タグを書き換えるまで何も変わらず、リリースのタグは移動も削除もできません。
+- **Claude Code プラグインをリリースに固定する**: `/plugin marketplace add torikatsupg/claude-tmux-sidebar#v0.7.0` のあと `/plugin install tmux-sidebar@torikatsupg`。タグを付けずに同じ 2 行を実行すれば、`--marketplace` の無い古い Claude Code でも入ります。
+- **Claude Code プラグインを使わずに hook を入れる**: `~/.tmux/plugins/claude-tmux-sidebar/install.sh --hooks-only` で `~/.claude/settings.json` に登録します（実行前にバックアップ `settings.json.bak.<日時>` を作成）。プラグインと両方入れると hook が 2 回ずつ走るので、どちらか一方にしてください。
+- **TPM を使わない**:
+
+  ```sh
+  git clone --branch v0.7.0 https://github.com/torikatsupg/claude-tmux-sidebar ~/.tmux/plugins/claude-tmux-sidebar
+  ~/.tmux/plugins/claude-tmux-sidebar/install.sh
+  ```
+
+  hook を登録し、`~/.tmux.conf` に `run-shell '.../sidebar.tmux'` を追記します（tmux の中で実行した場合はその場で読み込みます）。
+
+起動済みの Claude Code は再起動すると hook が有効になります。
+
+### アンインストール
+
+- TPM: `@plugin` 行を消して `prefix + alt + u`
+- Claude Code プラグイン: `/plugin uninstall tmux-sidebar@torikatsupg`
+- `install.sh`: `./install.sh --uninstall`
 
 ## プライバシー
 
-データは手元のマシンから出ません。状態ファイルにはセッション ID・作業ディレクトリ・ツール名・tmux ペイン・git ブランチ・context の使用率・最後のプロンプトの先頭 200 文字が入り、本人だけが読める権限で作られます。git ブランチと context の使用率は、セッションの transcript の末尾から読み取ります。
+データは手元のマシンから出ません。各 Claude セッションの状態は `~/.cache/claude-tmux-sidebar/<session_id>.json` に本人だけが読める権限で保存され、セッションが終わると消えます。中身はセッション ID・作業ディレクトリ・ツール名・tmux ペイン・Claude のプロセス ID・git ブランチ・context の使用率・最後のプロンプトの先頭 200 文字です。git ブランチと context の使用率は、セッションの transcript の末尾から読み取ります。
 
 デバッグ用に `CTS_DEBUG=1` を付けて Claude を起動すると、hook の生 payload が `~/.cache/claude-tmux-sidebar/debug.log` に残ります。**このログにはプロンプトやツールの入力がそのまま入る**ので、使い終わったら消し、共有する前に中身を確認してください。
 
 ## 制約
 
-- Esc で中断したターンは `Stop` が飛ばないため、60 秒後の `idle_prompt` で「待機」に戻るまで「稼働中」のままです。
+- Esc で中断したターンは、60 秒後に「待機」に戻るまで「稼働中」のままです。
 - zoom 中のウィンドウにはサイドバーを足しません（zoom が解除されてしまうため）。次に訪れたときに足します。
 
-## 開発
+## 開発に参加する
 
-Rust ツールチェーン（バージョンは `rust-toolchain.toml` で固定）、[shellcheck](https://www.shellcheck.net)、[shfmt](https://github.com/mvdan/sh) が必要です。
-
-```sh
-cargo xtask ci                 # rustfmt・clippy・テスト・shellcheck・shfmt・モジュールサイズ上限（CI と同じ）
-scripts/fetch-binary.sh --build  # 手元の tmux で試すために、このチェックアウトから bin/claude-tmux-sidebar をビルド
-scripts/screenshot.sh          # docs/screenshot.svg を再生成（日本語版は scripts/screenshot.sh ja）
-```
-
-コードの構成（`src/`）: 純粋なモジュールは値から値を作るだけにし、副作用は端に寄せています。
-
-| モジュール | 役割 |
-|---|---|
-| `cli`・`lib`・`main` | 引数の解析と振り分け |
-| `tmux`・`session::store`・`process` | 副作用: tmux サーバー・状態ファイル・他プロセス |
-| `hook` | hook の payload → 状態遷移（`transition` は純粋な状態機械） |
-| `control` | サイドバーの開閉とレイアウトの復元 |
-| `sidebar` | 一覧 UI。`update` は純粋な `(model, msg) → (model, effects)`、`view` が描画、`effect` が副作用を実行 |
-| `listing`・`jump` | tmux 順のグループ化、完了・承認待ちセッションへの移動 |
-
-スタイルのルールは clippy（`Cargo.toml` の `[workspace.lints]` と `clippy.toml`）と `cargo xtask ci` で強制しています: `unwrap` / `expect` / `panic` / 添字アクセス / `as` キャストの禁止、関数は 30 行まで、モジュールは 200 行まで、可変のループより `map`・`filter`・`fold` などのイテレータ。
-
-リリースは、`Cargo.toml`・`.claude-plugin/plugin.json`・`.claude-plugin/marketplace.json` の `version` を上げ、`CHANGELOG.md` に節を足して `main` にマージしたあと、Actions タブから **Release** ワークフローを実行します。macOS と Linux（arm64 / x86_64）のバイナリをビルドし、`v<version>` のタグと、それらを添付した GitHub Release を作ります。実行できるのはリポジトリのオーナーだけです。
+仕組み・開発環境・リリース手順は [CONTRIBUTING.md](CONTRIBUTING.md)（英語）にまとめています。
 
 ## ライセンス
 
