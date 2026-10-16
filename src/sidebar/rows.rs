@@ -14,11 +14,11 @@ pub enum Row {
     Session(Claude),
     /// The line under a Claude session: its last prompt and context usage.
     Detail(Claude),
-    /// A tmux session without Claude.
-    Empty,
+    /// The placeholder under a tmux session without Claude; it stands for that session.
+    Empty(String),
 }
 
-/// A selectable row: a tmux session heading, or a Claude session by id.
+/// A selectable row: a tmux session without Claude (its placeholder), or a Claude session by id.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum RowKey {
     Session(String),
@@ -31,7 +31,10 @@ pub fn rows(groups: &[Group]) -> Vec<Row> {
         .enumerate()
         .flat_map(|(i, g)| {
             let gap = (i > 0).then_some(Row::Gap);
-            let empty = g.claudes.is_empty().then_some(Row::Empty);
+            let empty = match &g.name {
+                GroupName::Session(name) if g.claudes.is_empty() => Some(Row::Empty(name.clone())),
+                _ => None,
+            };
             gap.into_iter()
                 .chain([Row::Heading(g.name.clone())])
                 .chain(g.claudes.iter().flat_map(session_rows))
@@ -49,12 +52,13 @@ fn session_rows(claude: &Claude) -> Vec<Row> {
         .collect()
 }
 
-/// The key of a selectable row; sessions outside tmux have no heading to jump to.
+/// The key of a selectable row: the cursor stops on Claude sessions, and on the placeholder of a
+/// tmux session without one, never on a heading.
 pub fn key(row: &Row) -> Option<RowKey> {
     match row {
-        Row::Heading(GroupName::Session(name)) => Some(RowKey::Session(name.clone())),
+        Row::Empty(name) => Some(RowKey::Session(name.clone())),
         Row::Session(c) => Some(RowKey::Claude(c.record.session_id.clone())),
-        Row::Heading(GroupName::Outside) | Row::Detail(_) | Row::Gap | Row::Empty => None,
+        Row::Heading(_) | Row::Detail(_) | Row::Gap => None,
     }
 }
 
@@ -128,7 +132,7 @@ mod tests {
             rows.as_slice(),
             [
                 Row::Heading(GroupName::Session(_)),
-                Row::Empty,
+                Row::Empty(_),
                 Row::Gap,
                 Row::Heading(GroupName::Outside),
                 Row::Session(_),
@@ -147,11 +151,12 @@ mod tests {
     #[test]
     fn maps_screen_lines_to_rows() {
         let rows = rows(&groups());
+        assert_eq!(at(&rows, 20, FIRST_ROW), None);
         assert_eq!(
-            at(&rows, 20, FIRST_ROW),
+            at(&rows, 20, FIRST_ROW + 1),
             Some(RowKey::Session("a".to_owned()))
         );
-        assert_eq!(at(&rows, 20, FIRST_ROW + 1), None);
+        assert_eq!(at(&rows, 20, FIRST_ROW + 2), None);
         assert_eq!(
             at(&rows, 20, FIRST_ROW + 5),
             Some(RowKey::Claude("c".to_owned()))

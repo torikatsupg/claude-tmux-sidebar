@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- The cursor wraps around: moving up from the first row goes to the last, and down from the last goes to the first.
+- The cursor skips session headings. It stops on Claude sessions, and on the `none` line of a tmux session without one (Enter jumps to that session).
+
 ## [0.5.0] - 2026-10-16
 
 ### Added

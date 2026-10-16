@@ -121,15 +121,50 @@ fn clicking_a_row_selects_and_jumps() {
         },
         snapshot(false),
     );
-    let (model, effects) = update(model, Msg::Clicked { y: rows::FIRST_ROW });
-    assert_eq!(selected(&model), Some(&RowKey::Session("s".to_owned())));
+    let (model, effects) = update(
+        model,
+        Msg::Clicked {
+            y: rows::FIRST_ROW + 2,
+        },
+    );
+    assert_eq!(selected(&model), Some(&claude_key("b")));
     assert!(matches!(
         effects.as_slice(),
         [Effect::Goto {
-            target: Target::Session(_),
+            target: Target::Pane(_),
             ..
         }]
     ));
+}
+
+#[test]
+fn clicking_a_heading_does_nothing() {
+    let model = loaded(
+        Model {
+            height: 20,
+            ..Model::default()
+        },
+        snapshot(false),
+    );
+    let (model, effects) = update(model, Msg::Clicked { y: rows::FIRST_ROW });
+    assert_eq!(selected(&model), Some(&claude_key("a")));
+    assert!(effects.is_empty());
+}
+
+#[test]
+fn moving_past_the_last_row_wraps_to_the_first() {
+    let model = loaded(
+        Model {
+            height: 20,
+            ..Model::default()
+        },
+        snapshot(true),
+    );
+    let last = update(model, Msg::Action(Action::Last)).0;
+    let wrapped = update(last, Msg::Action(Action::Move(1))).0;
+    assert_eq!(selected(&wrapped), Some(&claude_key("a")));
+    let back = update(wrapped, Msg::Action(Action::Move(-1))).0;
+    assert_eq!(selected(&back), Some(&claude_key("b")));
 }
 
 #[test]

@@ -97,7 +97,7 @@ fn row_line(model: &Model, messages: &Messages, row: &Row, width: usize) -> Line
     let selected = rows::owner(row).is_some_and(|k| model.selection.selected.as_ref() == Some(&k));
     let line = match row {
         Row::Gap => Line::default(),
-        Row::Empty => Line::styled(
+        Row::Empty(_) => Line::styled(
             format!("   {}", messages.none),
             Style::new().fg(MUTED).add_modifier(Modifier::ITALIC),
         ),
