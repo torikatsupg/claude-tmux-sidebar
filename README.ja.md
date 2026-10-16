@@ -2,13 +2,33 @@
 
 [English](README.md) | [日本語](README.ja.md)
 
-tmux の全ウィンドウ左側に、全 tmux セッションとその中で起動中の [Claude Code](https://claude.com/claude-code) セッションを状態つきで一覧表示するサイドバー。
+tmux で Claude Code を何本も並行して動かしていると、どれが承認待ちで、どれがもう終わったのか、すぐに見失います。claude-tmux-sidebar は tmux の全ウィンドウの左側にサイドバーを出し、全 tmux セッションとその中で動いている [Claude Code](https://claude.com/claude-code) セッションを、状態つきでリアルタイムに一覧表示します。
 
-![screenshot](docs/screenshot-ja.svg)
+![デモ: サイドバーに並ぶ Claude Code セッションの 1 つが黄色（承認待ち）に変わり、サイドバーで Enter を押してそこへ移動する様子](docs/demo.gif)
 
 - どの Claude が作業中か、承認待ちか、終わったかが一目で分かります。
-- `Enter` かクリックでそのセッションへ移動できます。
+- `Enter` かクリックでそのセッションへ移動できます。`prefix + C-n` なら、完了・承認待ちの次の Claude へ直接飛べます。
 - Claude が動いていない tmux セッションも表示するので、セッション切り替えにも使えます。
+
+## クイックスタート
+
+1. [TPM](https://github.com/tmux-plugins/tpm) を使う場合、`~/.tmux.conf` に次の行を追記して `prefix + I` を押します:
+
+   ```tmux
+   set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.4.0'
+   ```
+
+2. Claude Code の中で hook を入れ、起動済みの Claude Code を再起動します:
+
+   ```
+   /plugin install tmux-sidebar --marketplace torikatsupg/claude-tmux-sidebar
+   ```
+
+`prefix + b` でサイドバーが開きます。TPM を使わない入れ方、古い Claude Code での手順、Claude Code プラグインを使わない hook の登録、アンインストールは [必要なもの](#必要なもの) と [インストール](#インストール) を参照してください。
+
+## 状態表示
+
+![各状態のセッションを表示したサイドバー](docs/screenshot-ja.svg)
 
 | 表示 | 状態 | 元になる Claude Code hook |
 |---|---|---|
