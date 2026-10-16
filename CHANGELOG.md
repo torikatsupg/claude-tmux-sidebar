@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- Each session has a second line with the last prompt you sent and how full the context window is (yellow from 50%, red from 80%). Models with a 1M context window (`[1m]`, Fable, Mythos) are counted against 1M tokens.
+- The git branch is shown after the directory.
+
+### Changed
+
+- The window index (`1:api`) is shown only when the tmux session has more than one window.
+
 ## [0.4.0] - 2026-10-15
 
 ### Added

@@ -15,6 +15,10 @@ pub struct Payload {
     pub tool_name: String,
     #[serde(default)]
     pub cwd: String,
+    #[serde(default)]
+    pub prompt: String,
+    #[serde(default)]
+    pub transcript_path: String,
 }
 
 /// A hook event, with the data each one carries.

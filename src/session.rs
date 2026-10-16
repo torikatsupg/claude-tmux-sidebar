@@ -2,6 +2,7 @@
 
 pub mod live;
 pub mod store;
+pub mod transcript;
 
 use serde::{Deserialize, Serialize};
 
@@ -45,6 +46,15 @@ pub struct Record {
     pub since: Option<u64>,
     #[serde(default)]
     pub updated_at: u64,
+    /// The head of the last prompt the user sent.
+    #[serde(default)]
+    pub prompt: String,
+    /// The git branch Claude last worked on.
+    #[serde(default)]
+    pub branch: String,
+    /// How full the context window is, in percent.
+    #[serde(default)]
+    pub context: Option<u8>,
 }
 
 impl Record {

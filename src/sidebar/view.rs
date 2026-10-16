@@ -94,7 +94,7 @@ fn title(model: &Model) -> Line<'static> {
 }
 
 fn row_line(model: &Model, messages: &Messages, row: &Row, width: usize) -> Line<'static> {
-    let selected = rows::key(row).is_some_and(|k| model.selection.selected.as_ref() == Some(&k));
+    let selected = rows::owner(row).is_some_and(|k| model.selection.selected.as_ref() == Some(&k));
     let line = match row {
         Row::Gap => Line::default(),
         Row::Empty => Line::styled(
@@ -103,6 +103,7 @@ fn row_line(model: &Model, messages: &Messages, row: &Row, width: usize) -> Line
         ),
         Row::Heading(name) => heading(name, messages),
         Row::Session(claude) => session::line(model, claude, width),
+        Row::Detail(claude) => session::detail(model, claude, width),
     };
     if selected {
         highlight(line, width)

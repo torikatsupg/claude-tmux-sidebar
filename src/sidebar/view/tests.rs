@@ -7,6 +7,7 @@ use crate::sidebar::rows::RowKey;
 use crate::sidebar::selection::Selection;
 use crate::sidebar::snapshot::Snapshot;
 use crate::text;
+use crate::tmux::pane::Pane;
 use crate::tmux::pane::fixture::pane;
 
 const WIDTH: u16 = 34;
@@ -23,12 +24,17 @@ fn record(state: Status, detail: &str) -> Record {
 }
 
 fn model(state: Status, detail: &str, selected: bool) -> Model {
+    let claude = Claude {
+        record: record(state, detail),
+        pane: Some(pane(1, 2)),
+    };
+    model_of(claude, selected)
+}
+
+fn model_of(claude: Claude, selected: bool) -> Model {
     let groups = [Group {
         name: GroupName::Session("work".to_owned()),
-        claudes: vec![Claude {
-            record: record(state, detail),
-            pane: Some(pane(1, 2)),
-        }],
+        claudes: vec![claude],
     }];
     let snapshot = Snapshot {
         rows: rows::rows(&groups),
@@ -67,7 +73,7 @@ fn draws_title_list_and_help() {
     assert_eq!(screen.get(2).map(String::as_str), Some(" ▾ work"));
     assert_eq!(
         screen.get(3).map(String::as_str),
-        Some(" ◆ 2:api                  Edit 2s ")
+        Some(" ◆ api                    Edit 2s ")
     );
     assert_eq!(
         screen.last().map(String::as_str),
@@ -93,7 +99,7 @@ fn the_session_in_this_window_is_marked() {
     model.snapshot.window = Some(pane(1, 2).window_id);
     assert_eq!(
         screen(&model, &EN).get(3).map(String::as_str),
-        Some("▌✓ 2:api                       2s ")
+        Some("▌✓ api                         2s ")
     );
 }
 
@@ -118,4 +124,57 @@ fn the_cursor_is_a_background_that_keeps_the_row_colors() {
     assert_eq!(line.width(), usize::from(WIDTH));
     assert!(line.spans.iter().all(|s| s.style.bg == Some(CURSOR)));
     assert!(line.spans.iter().any(|s| s.style.fg == Some(Color::Cyan)));
+}
+
+fn busy_claude(windows: u32, context: Option<u8>) -> Claude {
+    Claude {
+        record: Record {
+            branch: "feat/rows".to_owned(),
+            prompt: "fix the failing sidebar test please".to_owned(),
+            context,
+            ..record(Status::Done, "")
+        },
+        pane: Some(Pane {
+            session_windows: windows,
+            ..pane(1, 2)
+        }),
+    }
+}
+
+#[test]
+fn a_session_shows_its_branch_then_its_prompt_and_context() {
+    let screen = screen(&model_of(busy_claude(1, Some(42)), false), &EN);
+    assert_eq!(
+        screen.get(3).map(String::as_str),
+        Some(" ✓ api feat/rows               2s ")
+    );
+    assert_eq!(
+        screen.get(4).map(String::as_str),
+        Some(" └ fix the failing sidebar t… 42% ")
+    );
+}
+
+#[test]
+fn the_window_index_shows_only_with_several_windows() {
+    let screen = screen(&model_of(busy_claude(3, None), false), &EN);
+    assert_eq!(
+        screen.get(3).map(String::as_str),
+        Some(" ✓ 2:api feat/rows             2s ")
+    );
+    assert_eq!(
+        screen.get(4).map(String::as_str),
+        Some(" └ fix the failing sidebar test … ")
+    );
+}
+
+#[test]
+fn a_narrow_row_cuts_the_branch_then_drops_it() {
+    let model = model_of(busy_claude(1, Some(90)), true);
+    let row = |width| lines(&model, &EN, width, model.height).get(3).map(text);
+    assert_eq!(row(16).as_deref(), Some(" ✓ api feat… 2s "));
+    assert_eq!(row(14).as_deref(), Some(" ✓ api     2s "));
+    let lines = lines(&model, &EN, 16, model.height);
+    let detail = lines.get(4).cloned().unwrap_or_default();
+    assert!(detail.spans.iter().all(|s| s.style.bg == Some(CURSOR)));
+    assert!(detail.spans.iter().any(|s| s.style.fg == Some(Color::Red)));
 }

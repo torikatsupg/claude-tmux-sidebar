@@ -30,15 +30,16 @@ t new-session -d -s scratch -n zsh "$(body '~/tmp')"
 
 socket=$(t display -p '#{socket_path}')
 now=$(date +%s)
-state() { # pane state detail cwd age_seconds
+state() { # pane state detail cwd age_seconds branch prompt context_percent
     jq -n --arg pane "$1" --arg state "$2" --arg detail "$3" --arg cwd "$4" --arg socket "$socket" \
         --argjson since $((now - $5)) --argjson now "$now" \
-        '{session_id:$pane, state:$state, detail:$detail, cwd:$cwd, pane:$pane, socket:$socket, pid:null, since:$since, updated_at:$now}' \
+        --arg branch "$6" --arg prompt "$7" --argjson context "$8" \
+        '{session_id:$pane, state:$state, detail:$detail, cwd:$cwd, pane:$pane, socket:$socket, pid:null, since:$since, updated_at:$now, branch:$branch, prompt:$prompt, context:$context}' \
         >"$CTS_STATE_DIR/${1#%}.json"
 }
-state "$(t display -p -t work:api '#{pane_id}')" running Bash /src/api 2
-state "$(t display -p -t work:web '#{pane_id}')" waiting Edit /src/web 64
-state "$(t display -p -t personal:blog '#{pane_id}')" "done" "" /src/blog 300
+state "$(t display -p -t work:api '#{pane_id}')" running Bash /src/api 2 retry 'Add retry to the HTTP client' 34
+state "$(t display -p -t work:web '#{pane_id}')" waiting Edit /src/web 64 main 'Fix the login form layout on mobile' 61
+state "$(t display -p -t personal:blog '#{pane_id}')" "done" "" /src/blog 300 draft 'Proofread the new post' 87
 
 t set -g @cts_lang "$LANG_OPT"
 t set -g @cts_width "$SIDEBAR_W"
