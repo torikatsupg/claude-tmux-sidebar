@@ -2,13 +2,33 @@
 
 [English](README.md) | [日本語](README.ja.md)
 
-A tmux sidebar that lists every tmux session and the [Claude Code](https://claude.com/claude-code) sessions running in it, with live status.
+Run several Claude Code sessions in parallel across tmux and you soon lose track of which one is waiting for your approval and which one has already finished. claude-tmux-sidebar keeps a sidebar on the left of every tmux window that lists all your tmux sessions and the [Claude Code](https://claude.com/claude-code) sessions running in them, with live status.
 
-![screenshot](docs/screenshot.svg)
+![Demo: one of several Claude Code sessions in the sidebar turns yellow (waiting for approval), and Enter in the sidebar jumps to it](docs/demo.gif)
 
 - See at a glance which Claude is working, which one is waiting for your approval, and which one has finished.
-- Jump to any session with `Enter` or a click.
+- Jump to any session with `Enter` or a click, or straight to the next Claude that is done or waiting with `prefix + C-n`.
 - tmux sessions without Claude are listed too, so the sidebar doubles as a session switcher.
+
+## Quick start
+
+1. With [TPM](https://github.com/tmux-plugins/tpm), add the plugin to `~/.tmux.conf` and press `prefix + I`:
+
+   ```tmux
+   set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.4.0'
+   ```
+
+2. Inside Claude Code, install the hooks, then restart running Claude Code sessions:
+
+   ```
+   /plugin install tmux-sidebar --marketplace torikatsupg/claude-tmux-sidebar
+   ```
+
+Press `prefix + b` to open the sidebar. See [Requirements](#requirements) and [Install](#install) for installing without TPM, older Claude Code versions, registering the hooks without the Claude Code plugin, and uninstalling.
+
+## Status
+
+![The sidebar showing sessions in each status](docs/screenshot.svg)
 
 | Icon | Status | Claude Code hook |
 |---|---|---|
