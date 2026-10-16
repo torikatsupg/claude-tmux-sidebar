@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- A session stays "running" while background subagents, shells or monitors it started are still working, instead of showing "done" as soon as the turn ends. It turns done at the next `Stop` with nothing left running (Claude stops again after a background task reports back). Needs a Claude Code version whose `Stop` hook reports `background_tasks`; older versions behave as before.
+
 ## [0.6.0] - 2026-10-17
 
 ### Changed

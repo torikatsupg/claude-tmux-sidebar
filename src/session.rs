@@ -55,6 +55,9 @@ pub struct Record {
     /// How full the context window is, in percent.
     #[serde(default)]
     pub context: Option<u8>,
+    /// Whether background tasks were still running when the main thread last stopped.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub background: bool,
 }
 
 impl Record {

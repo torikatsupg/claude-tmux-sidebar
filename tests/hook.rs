@@ -62,6 +62,25 @@ fn records_a_session_from_start_to_end() -> io::Result<()> {
 }
 
 #[test]
+fn background_tasks_keep_a_stopped_session_running() -> io::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let state_dir = dir.path().join("state");
+    hook(
+        &state_dir,
+        r#"{"hook_event_name":"Stop","session_id":"ci",
+            "background_tasks":[{"id":"a1","type":"subagent","status":"running"}]}"#,
+    )?;
+    assert_eq!(field(&state_dir, "state").as_deref(), Some("running"));
+    assert_eq!(field(&state_dir, "detail").as_deref(), Some("Agent"));
+    hook(
+        &state_dir,
+        r#"{"hook_event_name":"Stop","session_id":"ci","background_tasks":[]}"#,
+    )?;
+    assert_eq!(field(&state_dir, "state").as_deref(), Some("done"));
+    Ok(())
+}
+
+#[test]
 fn ignores_garbage_and_unsafe_session_ids() -> io::Result<()> {
     let dir = tempfile::tempdir()?;
     let state_dir = dir.path().join("state");

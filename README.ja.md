@@ -32,9 +32,9 @@ tmux で Claude Code を何本も並行して動かしていると、どれが�
 
 | 表示 | 状態 | 元になる Claude Code hook |
 |---|---|---|
-| ⠹ (緑) | 稼働中 | `UserPromptSubmit` / `PreToolUse` / `PostToolUse` |
+| ⠹ (緑) | 稼働中 | `UserPromptSubmit` / `PreToolUse` / `PostToolUse`、またはバックグラウンドのサブエージェント・shell・monitor が動いている間の `Stop` |
 | ◆ (黄) | 承認待ち・質問待ち | `PermissionRequest` / `Notification(permission_prompt)` / `PreToolUse(AskUserQuestion)` |
-| ✓ (水色) | 完了 | `Stop` |
+| ✓ (水色) | 完了 | バックグラウンドタスクが残っていない `Stop` |
 | ○ (灰) | 待機 | `SessionStart`、60 秒放置 (`Notification(idle_prompt)`) |
 
 各セッションにはディレクトリと git ブランチを表示し、右側に使用中のツールとその状態になってからの経過時間を表示します。下の行には最後に送ったプロンプトと context window の使用率を表示します（50% から黄色、80% から赤）。ウィンドウ番号（`1:api`）は、その tmux セッションにウィンドウが 2 つ以上あるときだけ付きます。左端のマゼンタのバーは、今いるウィンドウの印です。

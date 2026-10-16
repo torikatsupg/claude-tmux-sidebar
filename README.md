@@ -32,9 +32,9 @@ Press `prefix + b` to open the sidebar. See [Requirements](#requirements) and [I
 
 | Icon | Status | Claude Code hook |
 |---|---|---|
-| ⠹ (green) | running | `UserPromptSubmit` / `PreToolUse` / `PostToolUse` |
+| ⠹ (green) | running | `UserPromptSubmit` / `PreToolUse` / `PostToolUse`, or `Stop` while background subagents, shells or monitors are still running |
 | ◆ (yellow) | waiting for you | `PermissionRequest` / `Notification(permission_prompt)` / `PreToolUse(AskUserQuestion)` |
-| ✓ (cyan) | done | `Stop` |
+| ✓ (cyan) | done | `Stop` with no background task running |
 | ○ (gray) | idle | `SessionStart`, 60 s without input (`Notification(idle_prompt)`) |
 
 Each session shows its directory and git branch, with the tool in use and how long it has been in that status on the right. The line below shows the last prompt you sent and how full the context window is (yellow from 50%, red from 80%). The window index (`1:api`) appears only when the tmux session has more than one window. A magenta bar on the left edge marks the window you are in.

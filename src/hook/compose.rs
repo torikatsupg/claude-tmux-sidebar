@@ -16,7 +16,11 @@ pub fn compose(
     change: Change,
     origin: &Origin,
 ) -> Record {
-    let Change { status, detail } = change;
+    let Change {
+        status,
+        detail,
+        background,
+    } = change;
     let since = prev
         .filter(|r| r.state == status)
         .and_then(|r| r.since)
@@ -35,6 +39,7 @@ pub fn compose(
         pid: origin.pid,
         since: Some(since),
         updated_at: origin.now,
+        background,
         ..latest(payload, prev, origin)
     }
 }
@@ -77,6 +82,7 @@ mod tests {
         Change {
             status,
             detail: String::new(),
+            background: false,
         }
     }
 
