@@ -15,7 +15,7 @@ tmux で Claude Code を何本も並行して動かしていると、どれが�
 1. [TPM](https://github.com/tmux-plugins/tpm) を使う場合、`~/.tmux.conf` に次の行を追記して `prefix + I` を押します:
 
    ```tmux
-   set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.6.0'
+   set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.7.0'
    ```
 
 2. Claude Code の中で hook を入れ、起動済みの Claude Code を再起動します:
@@ -66,7 +66,7 @@ gh attestation verify ~/.tmux/plugins/claude-tmux-sidebar/bin/claude-tmux-sideba
 set -g @plugin 'torikatsupg/claude-tmux-sidebar'
 ```
 
-リリースの固定をおすすめします: `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.6.0'`。`main` の最新ではなくタグの付いたリリースが動き、タグを書き換えるまで何も変わりません。リリースのタグは移動も削除もできません。
+リリースの固定をおすすめします: `set -g @plugin 'torikatsupg/claude-tmux-sidebar#v0.7.0'`。`main` の最新ではなくタグの付いたリリースが動き、タグを書き換えるまで何も変わりません。リリースのタグは移動も削除もできません。
 
 ### 2. Claude Code の hook
 
@@ -83,7 +83,7 @@ Claude Code の中で `tmux-sidebar` プラグインを入れます:
 /plugin install tmux-sidebar@torikatsupg
 ```
 
-リリースを固定するなら、marketplace をタグ付きで追加します: `/plugin marketplace add torikatsupg/claude-tmux-sidebar#v0.6.0`。
+リリースを固定するなら、marketplace をタグ付きで追加します: `/plugin marketplace add torikatsupg/claude-tmux-sidebar#v0.7.0`。
 
 起動済みの Claude Code は再起動すると hook が有効になります。
 
@@ -98,7 +98,7 @@ Claude Code プラグインを使わない場合は、`~/.claude/settings.json` 
 ### TPM を使わない場合
 
 ```sh
-git clone --branch v0.6.0 https://github.com/torikatsupg/claude-tmux-sidebar ~/.tmux/plugins/claude-tmux-sidebar
+git clone --branch v0.7.0 https://github.com/torikatsupg/claude-tmux-sidebar ~/.tmux/plugins/claude-tmux-sidebar
 ~/.tmux/plugins/claude-tmux-sidebar/install.sh
 ```
 
