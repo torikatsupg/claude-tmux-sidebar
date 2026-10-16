@@ -38,13 +38,14 @@ pub fn follow(selection: Selection, snapshot: &Snapshot, popup: bool) -> Selecti
     }
 }
 
-/// Moves by `delta` rows, stopping at either end.
+/// Moves by `delta` rows, wrapping around past either end.
 pub fn moved(keys: &[RowKey], selected: Option<&RowKey>, delta: isize) -> Option<RowKey> {
+    let len = isize::try_from(keys.len()).ok().filter(|&n| n > 0)?;
     let current = selected
         .and_then(|s| keys.iter().position(|k| k == s))
+        .and_then(|i| isize::try_from(i).ok())
         .unwrap_or(0);
-    let last = keys.len().checked_sub(1)?;
-    let target = current.saturating_add_signed(delta).min(last);
+    let target = usize::try_from(current.wrapping_add(delta).rem_euclid(len)).ok()?;
     keys.get(target).cloned()
 }
 
@@ -75,11 +76,12 @@ mod tests {
     }
 
     #[test]
-    fn moves_within_bounds() {
+    fn moves_wrap_around() {
         let keys = [key(1), key(2), key(3)];
         assert_eq!(moved(&keys, Some(&key(1)), 1), Some(key(2)));
-        assert_eq!(moved(&keys, Some(&key(1)), -5), Some(key(1)));
-        assert_eq!(moved(&keys, None, 10), Some(key(3)));
+        assert_eq!(moved(&keys, Some(&key(1)), -1), Some(key(3)));
+        assert_eq!(moved(&keys, Some(&key(3)), 1), Some(key(1)));
+        assert_eq!(moved(&keys, None, 2), Some(key(3)));
         assert_eq!(moved(&[], None, 1), None);
     }
 
