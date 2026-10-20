@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- A session whose turn has ended no longer stays "running" because of a background monitor. Monitors wait for events and some never end, such as the watch Claude Code keeps on a published artifact, which left the session spinning for hours.
+
 ## [0.7.0] - 2026-10-17
 
 ### Changed
