@@ -58,6 +58,7 @@ pub enum Event<'a> {
         kind: &'a str,
     },
     /// `busy` is the kind of a background task still running, if any.
+    /// Monitors do not count: they wait for events, and some (artifact subscriptions) never end.
     Stop {
         busy: Option<&'a str>,
     },
@@ -83,7 +84,7 @@ impl<'a> Event<'a> {
                 busy: payload
                     .background_tasks
                     .iter()
-                    .find(|t| t.status == "running")
+                    .find(|t| t.status == "running" && t.kind != "monitor")
                     .map(|t| t.kind.as_str()),
             },
             _ => Self::Other,
@@ -118,5 +119,15 @@ mod tests {
                 busy: Some("shell")
             }
         );
+    }
+
+    #[test]
+    fn stop_does_not_count_a_running_monitor() {
+        let payload: Payload = serde_json::from_str(
+            r#"{"hook_event_name":"Stop","session_id":"s","background_tasks":[
+                {"id":"a","type":"monitor","status":"running"}]}"#,
+        )
+        .unwrap_or_default();
+        assert_eq!(Event::of(&payload), Event::Stop { busy: None });
     }
 }

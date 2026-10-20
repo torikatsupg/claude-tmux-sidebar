@@ -84,7 +84,6 @@ fn busy_detail(kind: &str) -> &'static str {
     match kind {
         "subagent" => "Agent",
         "shell" => "Shell",
-        "monitor" => "Monitor",
         _ => "Task",
     }
 }

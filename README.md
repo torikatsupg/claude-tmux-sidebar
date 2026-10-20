@@ -32,7 +32,7 @@ Press `prefix + b` to open the sidebar. For other ways to install, see [Install]
 
 | Icon | Status | When |
 |---|---|---|
-| ⠹ (green) | running | Claude is working, or subagents, shells or monitors it started in the background still are |
+| ⠹ (green) | running | Claude is working, or subagents or shells it started in the background still are |
 | ◆ (yellow) | waiting for you | Claude asks for approval or asks you a question |
 | ✓ (cyan) | done | The turn has ended and nothing is left running |
 | ○ (gray) | idle | Just started, or 60 s without input |
