@@ -19,7 +19,7 @@ HOOK="$REPO/bin/cts-hook"
 SETTINGS="${CLAUDE_SETTINGS:-$HOME/.claude/settings.json}"
 TMUX_CONF="${TMUX_CONF:-$HOME/.tmux.conf}"
 TMUX_LINE="run-shell '$REPO/sidebar.tmux'"
-EVENTS='["SessionStart","SessionEnd","UserPromptSubmit","PreToolUse","PostToolUse","PostToolUseFailure","PermissionRequest","Notification","Stop","StopFailure","SubagentStop"]'
+EVENTS='["SessionStart","SessionEnd","UserPromptSubmit","PreToolUse","PostToolUse","PostToolUseFailure","PermissionRequest","Notification","Elicitation","ElicitationResult","Stop","StopFailure","SubagentStop"]'
 
 for cmd in jq tmux; do
   command -v "$cmd" >/dev/null || {

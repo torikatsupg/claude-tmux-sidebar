@@ -65,6 +65,14 @@ pub enum Event<'a> {
         kind: &'a str,
         agent: &'a str,
     },
+    /// An MCP server asks the user for input during a tool call.
+    Elicitation {
+        agent: &'a str,
+    },
+    /// The user answered, declined or cancelled an MCP elicitation.
+    ElicitationResult {
+        agent: &'a str,
+    },
     /// `busy` is the kind of a background task still running, if any.
     /// Monitors do not count: they wait for events, and some (artifact subscriptions) never end.
     /// Also `StopFailure` (the turn ended on an API error), which reports no background tasks.
@@ -94,6 +102,8 @@ impl<'a> Event<'a> {
                 kind: &payload.notification_type,
                 agent,
             },
+            "Elicitation" => Self::Elicitation { agent },
+            "ElicitationResult" => Self::ElicitationResult { agent },
             "Stop" => Self::Stop {
                 busy: payload
                     .background_tasks

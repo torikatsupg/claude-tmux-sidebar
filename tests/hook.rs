@@ -177,3 +177,22 @@ fn a_turn_that_ends_without_stop_settles() -> io::Result<()> {
     assert_eq!(field(&state_dir, "state").as_deref(), Some("idle"));
     Ok(())
 }
+
+#[test]
+fn a_late_permission_prompt_and_mcp_elicitation() -> io::Result<()> {
+    let tmp = tempfile::tempdir()?;
+    let dir = tmp.path();
+    let payloads = [
+        r#"{"hook_event_name":"PermissionRequest","session_id":"ci","tool_name":"Bash"}"#,
+        r#"{"hook_event_name":"PostToolUse","session_id":"ci","tool_name":"Bash"}"#,
+        r#"{"hook_event_name":"Notification","session_id":"ci","notification_type":"permission_prompt"}"#,
+        r#"{"hook_event_name":"Elicitation","session_id":"ci","mcp_server_name":"m","mode":"url"}"#,
+        r#"{"hook_event_name":"ElicitationResult","session_id":"ci","mcp_server_name":"m","action":"accept"}"#,
+    ];
+    let wants = ["waiting", "running", "running", "waiting", "running"];
+    for (p, want) in payloads.iter().zip(wants) {
+        hook(dir, p)?;
+        assert_eq!(field(dir, "state").as_deref(), Some(want), "{p}");
+    }
+    Ok(())
+}
