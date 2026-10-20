@@ -116,8 +116,11 @@ fn notification(kind: &str, prev: Option<Status>, background: bool) -> Step<'sta
         "permission_prompt" | "elicitation_dialog" => Step::To(Status::Waiting, ""),
         // The main thread is quiet, but its background tasks are still working.
         "idle_prompt" if background => Step::Ignore,
-        // Fires after ~60s of inactivity: also recovers from an interrupted (Esc) turn, which skips Stop.
-        "idle_prompt" if prev == Some(Status::Running) => Step::To(Status::Idle, ""),
+        // Fires only ~60s after Claude finished responding, so no prompt is still pending: also recovers
+        // from an interrupted turn (Esc, or a denied prompt), which skips Stop.
+        "idle_prompt" if matches!(prev, Some(Status::Running | Status::Waiting)) => {
+            Step::To(Status::Idle, "")
+        }
         "idle_prompt" => Step::To(prev.unwrap_or_default(), ""),
         _ => Step::Ignore,
     }

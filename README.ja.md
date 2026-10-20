@@ -116,7 +116,7 @@ gh attestation verify ~/.tmux/plugins/claude-tmux-sidebar/bin/claude-tmux-sideba
 
 ## 制約
 
-- Esc で中断したターンは、60 秒後に「待機」に戻るまで「稼働中」のままです。
+- Esc で中断したターンや、承認を拒否して止まったターンは、60 秒後に「待機」に戻るまで「稼働中」か「承認待ち」のままです。
 - zoom 中のウィンドウにはサイドバーを足しません（zoom が解除されてしまうため）。次に訪れたときに足します。
 
 ## 開発に参加する
