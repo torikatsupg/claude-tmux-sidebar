@@ -20,14 +20,18 @@ pub fn compose(
         status,
         detail,
         background,
+        agent,
     } = change;
     let since = prev
         .filter(|r| r.state == status)
         .and_then(|r| r.since)
         .unwrap_or(origin.now);
-    let cwd = Some(payload.cwd.as_str())
-        .filter(|c| !c.is_empty())
-        .or_else(|| prev.map(|r| r.cwd.as_str()))
+    let cwd = Some(payload.cwd.as_str()).filter(|c| !c.is_empty());
+    // A subagent may work elsewhere, such as in its own worktree.
+    let cwd = cwd
+        .filter(|_| payload.agent_id.is_empty())
+        .or_else(|| prev.map(|r| r.cwd.as_str()).filter(|c| !c.is_empty()))
+        .or(cwd)
         .unwrap_or_default();
     Record {
         session_id: payload.session_id.clone(),
@@ -40,6 +44,7 @@ pub fn compose(
         since: Some(since),
         updated_at: origin.now,
         background,
+        agent,
         ..latest(payload, prev, origin)
     }
 }
@@ -83,6 +88,7 @@ mod tests {
             status,
             detail: String::new(),
             background: false,
+            agent: String::new(),
         }
     }
 
@@ -125,6 +131,21 @@ mod tests {
             change(Status::Done),
             &origin(0),
         );
+        assert_eq!(record.cwd, "/x");
+    }
+
+    #[test]
+    fn a_subagent_does_not_move_the_cwd() {
+        let prev = Record {
+            cwd: "/x".to_owned(),
+            ..Record::default()
+        };
+        let payload = Payload {
+            cwd: "/x/worktree".to_owned(),
+            agent_id: "a1".to_owned(),
+            ..Payload::default()
+        };
+        let record = compose(&payload, Some(&prev), change(Status::Running), &origin(0));
         assert_eq!(record.cwd, "/x");
     }
 

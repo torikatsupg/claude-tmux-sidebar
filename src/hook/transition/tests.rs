@@ -13,6 +13,7 @@ fn update(status: Status, detail: &str) -> Outcome {
         status,
         detail: detail.to_owned(),
         background: false,
+        agent: String::new(),
     })
 }
 
@@ -26,6 +27,7 @@ fn run(events: &[Event<'_>]) -> Record {
                 state: c.status,
                 detail: c.detail,
                 background: c.background,
+                agent: c.agent,
                 ..prev
             },
             _ => prev,
@@ -36,11 +38,23 @@ fn run(events: &[Event<'_>]) -> Record {
 #[test]
 fn tool_use_runs_and_questions_wait() {
     assert_eq!(
-        next(&Event::PreToolUse { tool: "Bash" }, None),
+        next(
+            &Event::PreToolUse {
+                tool: "Bash",
+                agent: ""
+            },
+            None
+        ),
         update(Status::Running, "Bash")
     );
     assert_eq!(
-        next(&Event::PreToolUse { tool: ASK_TOOL }, None),
+        next(
+            &Event::PreToolUse {
+                tool: ASK_TOOL,
+                agent: ""
+            },
+            None
+        ),
         update(Status::Waiting, ASK_DETAIL)
     );
     assert_eq!(next(&DONE, None), update(Status::Done, ""));
@@ -62,6 +76,7 @@ fn permission_prompts_keep_the_tool_name() {
     let outcome = next(
         &Event::Notification {
             kind: "permission_prompt",
+            agent: "",
         },
         Some(&running),
     );
@@ -72,6 +87,7 @@ fn permission_prompts_keep_the_tool_name() {
 fn idle_prompt_only_ends_a_running_turn() {
     let idle = Event::Notification {
         kind: "idle_prompt",
+        agent: "",
     };
     assert_eq!(
         next(&idle, Some(&prev(Status::Running, "Bash"))),
@@ -91,6 +107,7 @@ fn background_tasks_keep_a_stopped_session_running() {
         busy("subagent"),
         Event::Notification {
             kind: "idle_prompt",
+            agent: "",
         },
     ]);
     assert_eq!(
@@ -116,6 +133,7 @@ fn a_new_process_has_no_background_tasks() {
         Event::SessionStart { source: "resume" },
         Event::Notification {
             kind: "idle_prompt",
+            agent: "",
         },
     ]);
     assert!(!record.background);
@@ -124,9 +142,17 @@ fn a_new_process_has_no_background_tasks() {
 #[test]
 fn unknown_events_are_ignored() {
     assert_eq!(
-        next(&Event::Notification { kind: "other" }, None),
+        next(
+            &Event::Notification {
+                kind: "other",
+                agent: ""
+            },
+            None
+        ),
         Outcome::Ignore
     );
     assert_eq!(next(&Event::Other, None), Outcome::Ignore);
     assert_eq!(next(&Event::SessionEnd, None), Outcome::Remove);
 }
+
+mod agents;
