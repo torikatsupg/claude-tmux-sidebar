@@ -116,7 +116,7 @@ For debugging, start Claude with `CTS_DEBUG=1` to append raw hook payloads to `~
 
 ## Limitations
 
-- A turn interrupted with Esc stays "running" until it turns idle 60 seconds later.
+- A turn interrupted with Esc, or by denying a prompt, stays "running" or "waiting" until it turns idle 60 seconds later.
 - The sidebar is not added to a zoomed window (it would unzoom it); it is added on the next visit.
 
 ## Contributing

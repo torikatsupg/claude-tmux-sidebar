@@ -151,3 +151,29 @@ fn only_the_waiting_agent_ends_its_prompt() -> io::Result<()> {
     assert_eq!(field(&state_dir, "state").as_deref(), Some("running"));
     Ok(())
 }
+
+#[test]
+fn a_turn_that_ends_without_stop_settles() -> io::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let state_dir = dir.path().join("state");
+    let ask = r#"{"hook_event_name":"PermissionRequest","session_id":"ci","tool_name":"Bash"}"#;
+    hook(&state_dir, ask)?;
+    hook(
+        &state_dir,
+        r#"{"hook_event_name":"PostToolUseFailure","session_id":"ci","tool_name":"Bash",
+            "error":"Exit code 1","is_interrupt":false}"#,
+    )?;
+    assert_eq!(field(&state_dir, "state").as_deref(), Some("running"));
+    hook(
+        &state_dir,
+        r#"{"hook_event_name":"StopFailure","session_id":"ci","error":"rate_limit"}"#,
+    )?;
+    assert_eq!(field(&state_dir, "state").as_deref(), Some("done"));
+    hook(&state_dir, ask)?;
+    hook(
+        &state_dir,
+        r#"{"hook_event_name":"Notification","session_id":"ci","notification_type":"idle_prompt"}"#,
+    )?;
+    assert_eq!(field(&state_dir, "state").as_deref(), Some("idle"));
+    Ok(())
+}

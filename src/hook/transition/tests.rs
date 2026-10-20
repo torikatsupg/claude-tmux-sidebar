@@ -84,7 +84,7 @@ fn permission_prompts_keep_the_tool_name() {
 }
 
 #[test]
-fn idle_prompt_only_ends_a_running_turn() {
+fn idle_prompt_ends_an_unfinished_turn() {
     let idle = Event::Notification {
         kind: "idle_prompt",
         agent: "",
@@ -97,6 +97,26 @@ fn idle_prompt_only_ends_a_running_turn() {
         next(&idle, Some(&prev(Status::Done, ""))),
         update(Status::Done, "")
     );
+}
+
+#[test]
+fn a_failed_tool_or_a_denied_prompt_ends_the_wait() {
+    let ask = || Event::PermissionRequest {
+        tool: "Bash",
+        agent: "",
+    };
+    let failed = Event::PostToolUse {
+        tool: "Bash",
+        agent: "",
+    };
+    assert_eq!(run(&[ask(), failed]).state, Status::Running);
+    // A denial interrupts the turn without `Stop`; `idle_prompt` fires only once Claude stopped responding.
+    let idle = Event::Notification {
+        kind: "idle_prompt",
+        agent: "",
+    };
+    let denied = run(&[ask(), idle]);
+    assert_eq!((denied.state, denied.detail.as_str()), (Status::Idle, ""));
 }
 
 #[test]

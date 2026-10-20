@@ -67,6 +67,7 @@ pub enum Event<'a> {
     },
     /// `busy` is the kind of a background task still running, if any.
     /// Monitors do not count: they wait for events, and some (artifact subscriptions) never end.
+    /// Also `StopFailure` (the turn ended on an API error), which reports no background tasks.
     Stop {
         busy: Option<&'a str>,
     },
@@ -100,6 +101,7 @@ impl<'a> Event<'a> {
                     .find(|t| t.status == "running" && t.kind != "monitor")
                     .map(|t| t.kind.as_str()),
             },
+            "StopFailure" => Self::Stop { busy: None },
             "SubagentStop" => Self::SubagentStop { agent },
             _ => Self::Other,
         }
@@ -155,6 +157,15 @@ mod tests {
                 busy: Some("shell")
             }
         );
+    }
+
+    #[test]
+    fn stop_failure_ends_the_turn() {
+        let payload: Payload = serde_json::from_str(
+            r#"{"hook_event_name":"StopFailure","session_id":"s","error":"rate_limit"}"#,
+        )
+        .unwrap_or_default();
+        assert_eq!(Event::of(&payload), Event::Stop { busy: None });
     }
 
     #[test]

@@ -79,3 +79,20 @@ fn a_notification_keeps_the_agent_its_permission_request_named() {
     let waiting = run(&[ask("Bash", "a1"), prompt]);
     assert_eq!(waiting.agent, "a1");
 }
+
+#[test]
+fn idle_prompt_ends_a_subagents_wait_unless_background_tasks_run() {
+    let idle = || Event::Notification {
+        kind: "idle_prompt",
+        agent: "",
+    };
+    let denied = run(&[ask("Bash", "a1"), idle()]);
+    assert_eq!((denied.state, denied.agent.as_str()), (Status::Idle, ""));
+    let busy = Event::Stop {
+        busy: Some("subagent"),
+    };
+    assert_eq!(
+        run(&[ask("Bash", "a1"), busy, idle()]).state,
+        Status::Waiting
+    );
+}
