@@ -16,14 +16,8 @@ pub fn compose(
     change: Change,
     origin: &Origin,
 ) -> Record {
-    let Change {
-        status,
-        detail,
-        background,
-        agent,
-    } = change;
     let since = prev
-        .filter(|r| r.state == status)
+        .filter(|r| r.state == change.status)
         .and_then(|r| r.since)
         .unwrap_or(origin.now);
     let cwd = Some(payload.cwd.as_str()).filter(|c| !c.is_empty());
@@ -35,16 +29,17 @@ pub fn compose(
         .unwrap_or_default();
     Record {
         session_id: payload.session_id.clone(),
-        state: status,
-        detail,
+        state: change.status,
+        detail: change.detail,
         cwd: cwd.to_owned(),
         pane: origin.pane.clone(),
         socket: origin.socket.clone(),
         pid: origin.pid,
         since: Some(since),
         updated_at: origin.now,
-        background,
-        agent,
+        background: change.background,
+        agent: change.agent,
+        answered: change.answered,
         ..latest(payload, prev, origin)
     }
 }
@@ -89,6 +84,7 @@ mod tests {
             detail: String::new(),
             background: false,
             agent: String::new(),
+            answered: false,
         }
     }
 

@@ -61,6 +61,9 @@ pub struct Record {
     /// While waiting: the subagent whose prompt is pending, or empty for the main thread.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub agent: String,
+    /// The last prompt was answered: a notification for it that arrives late is ignored.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub answered: bool,
 }
 
 impl Record {

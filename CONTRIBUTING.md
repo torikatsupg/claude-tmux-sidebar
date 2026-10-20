@@ -12,10 +12,12 @@ Statuses come from these Claude Code hooks:
 
 | Status | Hook |
 |---|---|
-| running | `UserPromptSubmit` / `PreToolUse` / `PostToolUse` / `PostToolUseFailure`, or `Stop` whose `background_tasks` still has a running task |
-| waiting for you | `PermissionRequest` / `Notification(permission_prompt)` / `PreToolUse(AskUserQuestion)` |
+| running | `UserPromptSubmit` / `PreToolUse` / `PostToolUse` / `PostToolUseFailure` / `ElicitationResult`, or `Stop` whose `background_tasks` still has a running task |
+| waiting for you | `PermissionRequest` / `Elicitation` / `PreToolUse(AskUserQuestion)` / `Notification(permission_prompt, elicitation_dialog, elicitation_url_dialog)` |
 | done | `Stop` with no running background task, `StopFailure` (the turn ended on an API error) |
 | idle | `SessionStart`, `Notification(idle_prompt)` (unless background tasks are running) |
+
+Those notifications fire only after a prompt has waited about six seconds, so one can arrive after the prompt was answered. Once a wait ends, they are ignored until the next tool call (`PreToolUse`), `PermissionRequest`, `Elicitation` or prompt you send. A sandboxed command's network request raises no `PermissionRequest`, so the next `PreToolUse` lets its notification through again.
 
 A turn interrupted with Esc, or by denying a permission prompt, fires no `Stop`; `idle_prompt` turns it idle 60 seconds later, even from waiting. Claude Code sends `idle_prompt` only about 60 seconds after Claude finished responding and while no background agent runs, so no prompt is still pending then.
 

@@ -14,6 +14,7 @@ fn update(status: Status, detail: &str) -> Outcome {
         detail: detail.to_owned(),
         background: false,
         agent: String::new(),
+        answered: false,
     })
 }
 
@@ -28,6 +29,7 @@ fn run(events: &[Event<'_>]) -> Record {
                 detail: c.detail,
                 background: c.background,
                 agent: c.agent,
+                answered: c.answered,
                 ..prev
             },
             _ => prev,
@@ -176,3 +178,4 @@ fn unknown_events_are_ignored() {
 }
 
 mod agents;
+mod late;
