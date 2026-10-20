@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Fixed
 
 - A session whose turn has ended no longer stays "running" because of a background monitor. Monitors wait for events and some never end, such as the watch Claude Code keeps on a published artifact, which left the session spinning for hours.
+- A session waiting for approval or an answer stays "waiting" while other agents keep working: tool events from another subagent or the main thread, and a `Stop` with background tasks still running, no longer turn it "running". Only the agent that asked ends the wait, or a `SubagentStop` when that subagent ends. A subagent's directory, such as its worktree, no longer replaces the session's.
 
 ## [0.7.0] - 2026-10-17
 

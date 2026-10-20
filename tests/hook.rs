@@ -117,3 +117,37 @@ fn records_the_prompt_branch_and_context_usage() -> io::Result<()> {
     assert_eq!(record.get("context").and_then(Value::as_u64), Some(25));
     Ok(())
 }
+
+#[test]
+fn only_the_waiting_agent_ends_its_prompt() -> io::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let state_dir = dir.path().join("state");
+    hook(
+        &state_dir,
+        r#"{"hook_event_name":"UserPromptSubmit","session_id":"ci","cwd":"/repo"}"#,
+    )?;
+    hook(
+        &state_dir,
+        r#"{"hook_event_name":"PermissionRequest","session_id":"ci","tool_name":"Edit",
+            "agent_id":"a1","agent_type":"general-purpose","cwd":"/repo/wt"}"#,
+    )?;
+    hook(
+        &state_dir,
+        r#"{"hook_event_name":"PreToolUse","session_id":"ci","tool_name":"Bash",
+            "agent_id":"a2","agent_type":"Explore","cwd":"/repo/wt2"}"#,
+    )?;
+    hook(
+        &state_dir,
+        r#"{"hook_event_name":"Stop","session_id":"ci","cwd":"/repo",
+            "background_tasks":[{"id":"a1","type":"subagent","status":"running"}]}"#,
+    )?;
+    assert_eq!(field(&state_dir, "state").as_deref(), Some("waiting"));
+    assert_eq!(field(&state_dir, "cwd").as_deref(), Some("/repo"));
+    hook(
+        &state_dir,
+        r#"{"hook_event_name":"PostToolUse","session_id":"ci","tool_name":"Edit",
+            "agent_id":"a1","agent_type":"general-purpose","cwd":"/repo/wt"}"#,
+    )?;
+    assert_eq!(field(&state_dir, "state").as_deref(), Some("running"));
+    Ok(())
+}

@@ -58,6 +58,9 @@ pub struct Record {
     /// Whether background tasks were still running when the main thread last stopped.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub background: bool,
+    /// While waiting: the subagent whose prompt is pending, or empty for the main thread.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub agent: String,
 }
 
 impl Record {

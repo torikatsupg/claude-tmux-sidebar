@@ -12,12 +12,14 @@ Statuses come from these Claude Code hooks:
 
 | Status | Hook |
 |---|---|
-| running | `UserPromptSubmit` / `PreToolUse` / `PostToolUse`, or `Stop` whose `background_tasks` still has a running task |
+| running | `UserPromptSubmit` / `PreToolUse` / `PostToolUse` / `PostToolUseFailure`, or `Stop` whose `background_tasks` still has a running task |
 | waiting for you | `PermissionRequest` / `Notification(permission_prompt)` / `PreToolUse(AskUserQuestion)` |
 | done | `Stop` with no running background task |
 | idle | `SessionStart`, `Notification(idle_prompt)` (unless background tasks are running) |
 
 A turn interrupted with Esc does not fire `Stop`; `idle_prompt` turns it idle 60 seconds later.
+
+Hooks from subagents carry the parent's `session_id` and an `agent_id`. While a prompt is pending, only the agent that raised it (its tool events, or `SubagentStop` for a subagent) ends the wait; other agents' events and a `Stop` with background tasks still running keep it waiting. Only main-thread events update the session's `cwd`.
 
 ## Development
 

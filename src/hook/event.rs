@@ -13,6 +13,9 @@ pub struct Payload {
     pub notification_type: String,
     #[serde(default)]
     pub tool_name: String,
+    /// The subagent a hook fired in; absent on the main thread.
+    #[serde(default)]
+    pub agent_id: String,
     #[serde(default)]
     pub cwd: String,
     #[serde(default)]
@@ -37,7 +40,7 @@ pub struct BackgroundTask {
     pub status: String,
 }
 
-/// A hook event, with the data each one carries.
+/// A hook event, with the data each one carries. `agent` is the subagent it fired in, or empty for the main thread.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Event<'a> {
     SessionStart {
@@ -47,20 +50,28 @@ pub enum Event<'a> {
     UserPromptSubmit,
     PreToolUse {
         tool: &'a str,
+        agent: &'a str,
     },
+    /// Also `PostToolUseFailure`: either way the tool is no longer waiting.
     PostToolUse {
         tool: &'a str,
+        agent: &'a str,
     },
     PermissionRequest {
         tool: &'a str,
+        agent: &'a str,
     },
     Notification {
         kind: &'a str,
+        agent: &'a str,
     },
     /// `busy` is the kind of a background task still running, if any.
     /// Monitors do not count: they wait for events, and some (artifact subscriptions) never end.
     Stop {
         busy: Option<&'a str>,
+    },
+    SubagentStop {
+        agent: &'a str,
     },
     Other,
 }
@@ -68,17 +79,19 @@ pub enum Event<'a> {
 impl<'a> Event<'a> {
     pub fn of(payload: &'a Payload) -> Self {
         let tool = payload.tool_name.as_str();
+        let agent = payload.agent_id.as_str();
         match payload.hook_event_name.as_str() {
             "SessionStart" => Self::SessionStart {
                 source: &payload.source,
             },
             "SessionEnd" => Self::SessionEnd,
             "UserPromptSubmit" => Self::UserPromptSubmit,
-            "PreToolUse" => Self::PreToolUse { tool },
-            "PostToolUse" => Self::PostToolUse { tool },
-            "PermissionRequest" => Self::PermissionRequest { tool },
+            "PreToolUse" => Self::PreToolUse { tool, agent },
+            "PostToolUse" | "PostToolUseFailure" => Self::PostToolUse { tool, agent },
+            "PermissionRequest" => Self::PermissionRequest { tool, agent },
             "Notification" => Self::Notification {
                 kind: &payload.notification_type,
+                agent,
             },
             "Stop" => Self::Stop {
                 busy: payload
@@ -87,6 +100,7 @@ impl<'a> Event<'a> {
                     .find(|t| t.status == "running" && t.kind != "monitor")
                     .map(|t| t.kind.as_str()),
             },
+            "SubagentStop" => Self::SubagentStop { agent },
             _ => Self::Other,
         }
     }
@@ -102,7 +116,29 @@ mod tests {
             r#"{"hook_event_name":"PreToolUse","session_id":"s","tool_name":"Bash","extra":1}"#,
         )
         .unwrap_or_default();
-        assert_eq!(Event::of(&payload), Event::PreToolUse { tool: "Bash" });
+        assert_eq!(
+            Event::of(&payload),
+            Event::PreToolUse {
+                tool: "Bash",
+                agent: ""
+            }
+        );
+    }
+
+    #[test]
+    fn reads_the_subagent_a_hook_fired_in() {
+        let payload: Payload = serde_json::from_str(
+            r#"{"hook_event_name":"PostToolUseFailure","session_id":"s","tool_name":"Bash",
+                "agent_id":"a1","agent_type":"Explore"}"#,
+        )
+        .unwrap_or_default();
+        assert_eq!(
+            Event::of(&payload),
+            Event::PostToolUse {
+                tool: "Bash",
+                agent: "a1"
+            }
+        );
     }
 
     #[test]
