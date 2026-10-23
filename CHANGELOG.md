@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-10-23
+
 ### Fixed
 
 - A subagent waiting for approval keeps the session "waiting" when a background task finishes and its notification reaches the main thread, instead of turning it "running" while the approval dialog is still open.
@@ -111,7 +113,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `install.sh` for manual setups, with `--hooks-only` and `--uninstall`.
 - Options: `@cts_width`, `@cts_toggle_key` (several keys allowed), `@cts_popup_key`, `@cts_next_key`, `@cts_prev_key`, `@cts_default`, `@cts_lang` (`en` / `ja`), `@cts_hook_index`.
 
-[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.5.0...v0.6.0
