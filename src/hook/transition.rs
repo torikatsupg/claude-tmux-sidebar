@@ -87,8 +87,9 @@ fn pending<'a>(event: &Event<'a>, prev: Option<&Record>) -> Option<Step<'a>> {
         Event::PostToolUse { agent, .. } | Event::ElicitationResult { agent } if agent != owner => {
             keep
         }
-        // The main thread stops while a background subagent still waits for the user.
-        Event::Stop { busy: Some(_) } if !owner.is_empty() => keep,
+        // The main thread stops while a background subagent still waits for the user, or gets a
+        // background task's notification (a prompt cannot be submitted over an open dialog).
+        Event::Stop { busy: Some(_) } | Event::UserPromptSubmit if !owner.is_empty() => keep,
         // The waiting subagent ended without finishing its tool.
         Event::SubagentStop { agent } if !agent.is_empty() && agent == owner => {
             Some(Step::To(Status::Running, busy_detail("subagent")))

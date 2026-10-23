@@ -96,3 +96,22 @@ fn idle_prompt_ends_a_subagents_wait_unless_background_tasks_run() {
         Status::Waiting
     );
 }
+
+#[test]
+fn a_background_notification_keeps_a_subagents_prompt() {
+    let waiting = run(&[ask("Bash", "a1"), Event::UserPromptSubmit]);
+    assert_eq!(
+        (
+            waiting.state,
+            waiting.detail.as_str(),
+            waiting.agent.as_str()
+        ),
+        (Status::Waiting, "Bash", "a1")
+    );
+}
+
+#[test]
+fn a_prompt_submit_ends_the_main_threads_wait() {
+    let running = run(&[ask("Bash", ""), Event::UserPromptSubmit]);
+    assert_eq!(running.state, Status::Running);
+}

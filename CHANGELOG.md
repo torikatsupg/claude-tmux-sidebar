@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- A subagent waiting for approval keeps the session "waiting" when a background task finishes and its notification reaches the main thread, instead of turning it "running" while the approval dialog is still open.
+
 ## [0.7.1] - 2026-10-20
 
 ### Fixed
