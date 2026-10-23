@@ -21,7 +21,7 @@ Those notifications fire only after a prompt has waited about six seconds, so on
 
 A turn interrupted with Esc, or by denying a permission prompt, fires no `Stop`; `idle_prompt` turns it idle 60 seconds later, even from waiting. Claude Code sends `idle_prompt` only about 60 seconds after Claude finished responding and while no background agent runs, so no prompt is still pending then.
 
-Hooks from subagents carry the parent's `session_id` and an `agent_id`. While a prompt is pending, only the agent that raised it (its tool events, or `SubagentStop` for a subagent) ends the wait; other agents' events and a `Stop` with background tasks still running keep it waiting. Only main-thread events update the session's `cwd`.
+Hooks from subagents carry the parent's `session_id` and an `agent_id`. While a prompt is pending, only the agent that raised it (its tool events, or `SubagentStop` for a subagent) ends the wait; other agents' events, a `Stop` with background tasks still running, and a `UserPromptSubmit` while a subagent waits (a background task's notification; no prompt can be typed over an open dialog) keep it waiting. Only main-thread events update the session's `cwd`.
 
 ## Development
 
