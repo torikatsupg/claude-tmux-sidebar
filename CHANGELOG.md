@@ -4,9 +4,11 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-10-27
+
 ### Fixed
 
-- The context usage and branch are read by the sidebar instead of the hooks, so a finished turn's usage shows right away instead of one event late, and the row shows no percentage right after `/compact` instead of the pre-compaction value until the next prompt.
+- The context usage and branch are read by the sidebar instead of the hooks, so a finished turn's usage shows right away instead of one event late, and the row shows no percentage right after `/compact` instead of the pre-compaction value until the next prompt. A sidebar that was open before the update shows neither until you reopen it.
 
 ## [0.7.3] - 2026-10-27
 
@@ -123,7 +125,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `install.sh` for manual setups, with `--hooks-only` and `--uninstall`.
 - Options: `@cts_width`, `@cts_toggle_key` (several keys allowed), `@cts_popup_key`, `@cts_next_key`, `@cts_prev_key`, `@cts_default`, `@cts_lang` (`en` / `ja`), `@cts_hook_index`.
 
-[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.3...HEAD
+[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.4...HEAD
+[0.7.4]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.3...v0.7.4
 [0.7.3]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.0...v0.7.1
