@@ -11,7 +11,7 @@
       "name": "tmux-sidebar",
       "source": "./",
       "description": "Reports Claude Code session status to the claude-tmux-sidebar tmux plugin.",
-      "version": "0.7.2",
+      "version": "0.7.3",
       "author": {
         "name": "torikatsupg"
       }
