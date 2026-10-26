@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- After `/compact`, a session's context usage is no longer shown at its pre-compaction value until Claude answers again; the row shows no percentage until then.
+
 ## [0.7.2] - 2026-10-23
 
 ### Fixed
