@@ -14,6 +14,7 @@ fn claude(id: &str, pane: Pane, state: Status) -> Claude {
     Claude {
         record,
         pane: Some(pane),
+        latest: None,
     }
 }
 

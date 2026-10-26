@@ -40,28 +40,21 @@ pub fn compose(
         background: change.background,
         agent: change.agent,
         answered: change.answered,
-        ..latest(payload, prev, origin)
+        ..latest(payload, prev)
     }
 }
 
-/// The prompt, branch and context usage: new values when this event brings them, else the previous ones.
-fn latest(payload: &Payload, prev: Option<&Record>, origin: &Origin) -> Record {
-    let seen = origin.transcript.as_ref();
+/// The prompt and transcript path: new values when this event brings them, else the previous ones.
+fn latest(payload: &Payload, prev: Option<&Record>) -> Record {
     Record {
         prompt: Some(headline(&payload.prompt))
             .filter(|p| !p.is_empty())
             .or_else(|| prev.map(|r| r.prompt.clone()))
             .unwrap_or_default(),
-        branch: seen
-            .map(|t| t.branch.clone())
-            .filter(|b| !b.is_empty())
-            .or_else(|| prev.map(|r| r.branch.clone()))
+        transcript: Some(payload.transcript_path.clone())
+            .filter(|t| !t.is_empty())
+            .or_else(|| prev.map(|r| r.transcript.clone()))
             .unwrap_or_default(),
-        // A transcript that was read is authoritative, even when it has no usage after a compaction.
-        context: match seen {
-            Some(t) => t.context,
-            None => prev.and_then(|r| r.context),
-        },
         ..Record::default()
     }
 }

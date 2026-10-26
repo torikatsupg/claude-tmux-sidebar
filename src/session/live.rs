@@ -5,6 +5,7 @@ use std::path::Path;
 
 use itertools::Itertools;
 
+use super::transcript::Latest;
 use super::{Record, store};
 use crate::process;
 use crate::tmux::pane::{Pane, PaneId};
@@ -14,6 +15,20 @@ use crate::tmux::pane::{Pane, PaneId};
 pub struct Claude {
     pub record: Record,
     pub pane: Option<Pane>,
+    /// What its transcript says, when the sidebar has read it.
+    pub latest: Option<Latest>,
+}
+
+impl Claude {
+    /// The git branch Claude last worked on; empty when unknown.
+    pub fn branch(&self) -> &str {
+        self.latest.as_ref().map_or("", |l| l.branch.as_str())
+    }
+
+    /// How full the context window is, in percent.
+    pub fn context(&self) -> Option<u8> {
+        self.latest.as_ref().and_then(|l| l.context)
+    }
 }
 
 /// What to do with one state file.
@@ -48,6 +63,7 @@ pub fn dispose(record: Record, alive: bool, server: &Server<'_>) -> Disposition 
         Disposition::Keep(Box::new(Claude {
             pane: pane.filter(|_| same_server),
             record,
+            latest: None,
         }))
     }
 }
@@ -94,86 +110,4 @@ fn keep_or_remove(path: &Path, record: Record, server: &Server<'_>) -> Option<Cl
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::tmux::pane::fixture::pane;
-
-    fn record(id: &str, pane: &str, socket: &str, updated_at: u64) -> Record {
-        Record {
-            session_id: id.to_owned(),
-            pane: pane.to_owned(),
-            socket: socket.to_owned(),
-            updated_at,
-            ..Record::default()
-        }
-    }
-
-    fn dispose_in(record: Record, alive: bool) -> Disposition {
-        let panes: BTreeMap<PaneId, Pane> = [pane(1, 0)].into_iter().map(|p| (p.id, p)).collect();
-        dispose(
-            record,
-            alive,
-            &Server {
-                socket: "s",
-                panes: &panes,
-            },
-        )
-    }
-
-    fn kept(disposition: Disposition) -> Option<Claude> {
-        match disposition {
-            Disposition::Keep(claude) => Some(*claude),
-            Disposition::Remove | Disposition::Skip => None,
-        }
-    }
-
-    #[test]
-    fn keeps_sessions_of_this_server_with_their_pane() {
-        assert_eq!(
-            kept(dispose_in(record("a", "%1", "s", 0), true)).and_then(|c| c.pane),
-            Some(pane(1, 0))
-        );
-    }
-
-    #[test]
-    fn removes_dead_or_paneless_sessions() {
-        assert_eq!(
-            dispose_in(record("a", "%1", "s", 0), false),
-            Disposition::Remove
-        );
-        assert_eq!(
-            dispose_in(record("a", "%9", "s", 0), true),
-            Disposition::Remove
-        );
-    }
-
-    #[test]
-    fn skips_other_servers_but_keeps_sessions_outside_tmux() {
-        assert_eq!(
-            dispose_in(record("a", "%9", "other", 0), true),
-            Disposition::Skip
-        );
-        assert_eq!(
-            kept(dispose_in(record("a", "", "", 0), true)).map(|c| c.pane),
-            Some(None)
-        );
-    }
-
-    #[test]
-    fn keeps_the_newest_session_per_pane() {
-        let claudes = [
-            record("old", "%1", "s", 1),
-            record("new", "%1", "s", 2),
-            record("x", "", "", 0),
-        ]
-        .into_iter()
-        .map(|record| Claude { record, pane: None })
-        .collect();
-        let ids: Vec<String> = newest_per_pane(claudes)
-            .into_iter()
-            .map(|c| c.record.session_id)
-            .sorted()
-            .collect();
-        assert_eq!(ids, ["new", "x"]);
-    }
-}
+mod tests;

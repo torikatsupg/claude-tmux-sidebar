@@ -37,10 +37,7 @@ pub fn line(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
     );
     let room = width.saturating_sub(5 + text::width(&right));
     let name = truncate(&name(claude), room);
-    let branch = branch(
-        &claude.record.branch,
-        room.saturating_sub(text::width(&name)),
-    );
+    let branch = branch(claude.branch(), room.saturating_sub(text::width(&name)));
     let here = here(model, claude);
     let used = text::width(&name) + text::width(&branch) + text::width(&right);
     Line::from(vec![
@@ -58,7 +55,7 @@ pub fn line(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
 /// `▌└ fix the failing test…               42% `: the prompt lines up with the name above it.
 pub fn detail(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
     let record = &claude.record;
-    let (context, color) = record.context.map_or((String::new(), MUTED), |c| {
+    let (context, color) = claude.context().map_or((String::new(), MUTED), |c| {
         (format!("{c}%"), context_color(c))
     });
     let reserved = if context.is_empty() {

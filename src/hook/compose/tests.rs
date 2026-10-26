@@ -1,6 +1,5 @@
 use super::*;
 use crate::session::Status;
-use crate::session::transcript::Latest;
 
 fn change(status: Status) -> Change {
     Change {
@@ -18,7 +17,6 @@ fn origin(now: u64) -> Origin {
         socket: "s".to_owned(),
         pid: Some(9),
         now,
-        transcript: None,
     }
 }
 
@@ -70,23 +68,17 @@ fn a_subagent_does_not_move_the_cwd() {
 }
 
 #[test]
-fn keeps_the_prompt_branch_and_context_until_new_ones_arrive() {
+fn keeps_the_prompt_and_transcript_until_new_ones_arrive() {
     let submit = Payload {
         session_id: "a".to_owned(),
         prompt: "fix\n  the   bug".to_owned(),
+        transcript_path: "/t/a.jsonl".to_owned(),
         ..Payload::default()
     };
-    let seen = Origin {
-        transcript: Some(Latest {
-            branch: "main".to_owned(),
-            context: Some(42),
-        }),
-        ..origin(0)
-    };
-    let first = compose(&submit, None, change(Status::Running), &seen);
+    let first = compose(&submit, None, change(Status::Running), &origin(0));
     assert_eq!(
-        (first.prompt.as_str(), first.branch.as_str(), first.context),
-        ("fix the bug", "main", Some(42))
+        (first.prompt.as_str(), first.transcript.as_str()),
+        ("fix the bug", "/t/a.jsonl")
     );
     let later = compose(
         &Payload::default(),
@@ -95,36 +87,7 @@ fn keeps_the_prompt_branch_and_context_until_new_ones_arrive() {
         &origin(1),
     );
     assert_eq!(
-        (later.prompt.as_str(), later.branch.as_str(), later.context),
-        ("fix the bug", "main", Some(42))
+        (later.prompt.as_str(), later.transcript.as_str()),
+        ("fix the bug", "/t/a.jsonl")
     );
-}
-
-#[test]
-fn a_transcript_without_usage_clears_the_previous_context() {
-    let prev = Record {
-        context: Some(91),
-        ..Record::default()
-    };
-    let compacted = Origin {
-        transcript: Some(Latest {
-            branch: "main".to_owned(),
-            context: None,
-        }),
-        ..origin(0)
-    };
-    let record = compose(
-        &Payload::default(),
-        Some(&prev),
-        change(Status::Done),
-        &compacted,
-    );
-    assert_eq!(record.context, None);
-    let unread = compose(
-        &Payload::default(),
-        Some(&prev),
-        change(Status::Done),
-        &origin(1),
-    );
-    assert_eq!(unread.context, Some(91));
 }

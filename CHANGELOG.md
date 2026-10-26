@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- The context usage and branch are read by the sidebar instead of the hooks, so a finished turn's usage shows right away instead of one event late, and the row shows no percentage right after `/compact` instead of the pre-compaction value until the next prompt.
+
 ## [0.7.3] - 2026-10-27
 
 ### Fixed

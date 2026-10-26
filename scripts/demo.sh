@@ -43,7 +43,7 @@ session_file() { # target kind: a per-session file of the demo (prompt or transc
 details() { # target branch context_percent prompt: what the session's hooks report besides the status
     mkdir -p "$CTS_DEMO_DIR/prompt" "$CTS_DEMO_DIR/transcript"
     printf '%s' "$4" >"$(session_file "$1" prompt)"
-    # One assistant entry, as Claude Code writes it: the hook reads the branch and token usage from it.
+    # One assistant entry, as Claude Code writes it: the sidebar reads the branch and token usage from it.
     jq -nc --arg branch "$2" --argjson tokens "$(($3 * 2000))" \
         '{type:"assistant", gitBranch:$branch, message:{model:"claude-opus-5-5", usage:{input_tokens:$tokens}}}' \
         >"$(session_file "$1" transcript)"

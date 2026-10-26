@@ -49,12 +49,9 @@ pub struct Record {
     /// The head of the last prompt the user sent.
     #[serde(default)]
     pub prompt: String,
-    /// The git branch Claude last worked on.
-    #[serde(default)]
-    pub branch: String,
-    /// How full the context window is, in percent.
-    #[serde(default)]
-    pub context: Option<u8>,
+    /// The session's transcript, where the sidebar reads the branch and context usage.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub transcript: String,
     /// Whether background tasks were still running when the main thread last stopped.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub background: bool,
@@ -88,7 +85,7 @@ mod tests {
     #[test]
     fn reads_the_shared_format() {
         let json = r#"{"session_id":"a","state":"waiting","detail":"Bash","cwd":"/x","pane":"%3",
-                       "socket":"/tmp/s","pid":null,"since":5,"updated_at":6}"#;
+                       "socket":"/tmp/s","pid":null,"since":5,"updated_at":6,"branch":"main","context":42}"#;
         let record: Record = serde_json::from_str(json).unwrap_or_default();
         assert_eq!(record.state, Status::Waiting);
         assert_eq!(record.pane_id(), PaneId::parse("%3"));

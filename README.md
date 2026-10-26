@@ -110,7 +110,7 @@ Restart running Claude Code sessions to pick up the hooks.
 
 ## Privacy
 
-Everything stays on your machine. Each Claude session's status is kept in `~/.cache/claude-tmux-sidebar/<session_id>.json`, readable only by you and removed when the session ends. It holds the session ID, working directory, tool name, tmux pane, Claude's process ID, git branch, context usage and the first 200 characters of your last prompt. The git branch and context usage are read from the end of the session's transcript.
+Everything stays on your machine. Each Claude session's status is kept in `~/.cache/claude-tmux-sidebar/<session_id>.json`, readable only by you and removed when the session ends. It holds the session ID, working directory, tool name, tmux pane, Claude's process ID, the path of the session's transcript and the first 200 characters of your last prompt. The sidebar reads the git branch and context usage from the end of that transcript and does not store them.
 
 For debugging, start Claude with `CTS_DEBUG=1` to append raw hook payloads to `~/.cache/claude-tmux-sidebar/debug.log`. **The log contains your prompts and tool inputs** — delete it when done and check it before sharing.
 
