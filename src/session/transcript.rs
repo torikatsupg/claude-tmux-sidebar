@@ -1,6 +1,8 @@
 //! What a session's transcript tells about it: the git branch and how full the context window is
 //! (unknown right after a compaction).
 
+pub mod cache;
+
 use std::fs::File;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::path::Path;
@@ -17,7 +19,7 @@ const LONG_SUFFIX: &str = "[1m]";
 const LONG_ONLY: [&str; 2] = ["fable", "mythos"];
 
 /// The latest state of a session, as of its last assistant entry or compaction.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Latest {
     pub branch: String,
     /// Context usage in percent; `None` after a compaction until the next assistant entry.

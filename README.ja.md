@@ -110,7 +110,7 @@ gh attestation verify ~/.tmux/plugins/claude-tmux-sidebar/bin/claude-tmux-sideba
 
 ## プライバシー
 
-データは手元のマシンから出ません。各 Claude セッションの状態は `~/.cache/claude-tmux-sidebar/<session_id>.json` に本人だけが読める権限で保存され、セッションが終わると消えます。中身はセッション ID・作業ディレクトリ・ツール名・tmux ペイン・Claude のプロセス ID・git ブランチ・context の使用率・最後のプロンプトの先頭 200 文字です。git ブランチと context の使用率は、セッションの transcript の末尾から読み取ります。
+データは手元のマシンから出ません。各 Claude セッションの状態は `~/.cache/claude-tmux-sidebar/<session_id>.json` に本人だけが読める権限で保存され、セッションが終わると消えます。中身はセッション ID・作業ディレクトリ・ツール名・tmux ペイン・Claude のプロセス ID・セッションの transcript のパス・最後のプロンプトの先頭 200 文字です。git ブランチと context の使用率はサイドバーがその transcript の末尾から読み取り、保存はしません。
 
 デバッグ用に `CTS_DEBUG=1` を付けて Claude を起動すると、hook の生 payload が `~/.cache/claude-tmux-sidebar/debug.log` に残ります。**このログにはプロンプトやツールの入力がそのまま入る**ので、使い終わったら消し、共有する前に中身を確認してください。
 

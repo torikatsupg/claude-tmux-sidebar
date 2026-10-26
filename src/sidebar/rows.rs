@@ -45,7 +45,7 @@ pub fn rows(groups: &[Group]) -> Vec<Row> {
 
 /// A Claude session, followed by its detail line when there is anything to show.
 fn session_rows(claude: &Claude) -> Vec<Row> {
-    let detail = !claude.record.prompt.is_empty() || claude.record.context.is_some();
+    let detail = !claude.record.prompt.is_empty() || claude.context().is_some();
     [Row::Session(claude.clone())]
         .into_iter()
         .chain(detail.then(|| Row::Detail(claude.clone())))
@@ -112,6 +112,7 @@ mod tests {
                 ..Record::default()
             },
             pane: None,
+            latest: None,
         };
         vec![
             Group {

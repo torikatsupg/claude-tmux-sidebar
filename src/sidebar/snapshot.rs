@@ -1,11 +1,13 @@
 //! What the sidebar knows about tmux and Claude at one moment.
 
 use std::collections::HashMap;
+use std::path::Path;
 
 use super::rows::{self, Row};
 use crate::context::Context;
 use crate::listing;
-use crate::session::live;
+use crate::session::live::{self, Claude};
+use crate::session::transcript::cache::Transcripts;
 use crate::tmux::{
     self,
     pane::{self, Pane, PaneId, WindowId},
@@ -26,12 +28,34 @@ pub struct Snapshot {
     pub session_windows: HashMap<String, WindowId>,
 }
 
-/// Reads tmux and the state files. `me` is the sidebar pane, or the pane a popup was opened from.
-pub fn load(ctx: &Context, me: Option<PaneId>, popup: bool) -> Snapshot {
+/// Reads tmux, the state files and the transcripts that changed since `transcripts`.
+/// `me` is the sidebar pane, or the pane a popup was opened from.
+pub fn load(
+    ctx: &Context,
+    me: Option<PaneId>,
+    popup: bool,
+    transcripts: Transcripts,
+) -> (Snapshot, Transcripts) {
     let panes = tmux::panes();
     let claudes = live::load(&ctx.state_dir, &ctx.socket, &panes);
+    let transcripts = transcripts.refresh(
+        claudes
+            .iter()
+            .map(|c| Path::new(c.record.transcript.as_str()))
+            .filter(|p| !p.as_os_str().is_empty()),
+    );
+    let claudes: Vec<Claude> = claudes
+        .into_iter()
+        .map(|c| Claude {
+            latest: transcripts.latest(&c.record.transcript),
+            ..c
+        })
+        .collect();
     let groups = listing::groups(&tmux::sessions(), &claudes);
-    from_parts(rows::rows(&groups), &panes, me, popup)
+    (
+        from_parts(rows::rows(&groups), &panes, me, popup),
+        transcripts,
+    )
 }
 
 /// The pure part of [`load`].

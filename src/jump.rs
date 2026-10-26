@@ -91,6 +91,7 @@ mod tests {
                     ..Record::default()
                 },
                 pane: Some(pane(id, id)),
+                latest: None,
             })
             .collect();
         vec![Group {

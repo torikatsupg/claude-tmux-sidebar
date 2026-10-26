@@ -3,6 +3,7 @@ use crate::i18n::{EN, JA};
 use crate::listing::Group;
 use crate::session::Record;
 use crate::session::live::Claude;
+use crate::session::transcript::Latest;
 use crate::sidebar::rows::RowKey;
 use crate::sidebar::selection::Selection;
 use crate::sidebar::snapshot::Snapshot;
@@ -27,6 +28,7 @@ fn model(state: Status, detail: &str, selected: bool) -> Model {
     let claude = Claude {
         record: record(state, detail),
         pane: Some(pane(1, 2)),
+        latest: None,
     };
     model_of(claude, selected)
 }
@@ -129,14 +131,16 @@ fn the_cursor_is_a_background_that_keeps_the_row_colors() {
 fn busy_claude(windows: u32, context: Option<u8>) -> Claude {
     Claude {
         record: Record {
-            branch: "feat/rows".to_owned(),
             prompt: "fix the failing sidebar test please".to_owned(),
-            context,
             ..record(Status::Done, "")
         },
         pane: Some(Pane {
             session_windows: windows,
             ..pane(1, 2)
+        }),
+        latest: Some(Latest {
+            branch: "feat/rows".to_owned(),
+            context,
         }),
     }
 }

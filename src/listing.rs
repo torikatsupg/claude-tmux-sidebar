@@ -65,6 +65,7 @@ mod tests {
                 ..Record::default()
             },
             pane,
+            latest: None,
         }
     }
 

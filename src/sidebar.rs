@@ -20,6 +20,7 @@ use ratatui::crossterm::execute;
 use crate::context::{self, Context};
 use crate::i18n::{self, Messages};
 use crate::session::store;
+use crate::session::transcript::cache::Transcripts;
 use crate::tmux::{self, pane::PaneId};
 use effect::Next;
 use update::{Model, Msg};
@@ -54,6 +55,7 @@ struct Loop {
     model: Model,
     loaded_at: Instant,
     mtime: Option<SystemTime>,
+    transcripts: Transcripts,
 }
 
 pub fn run(ctx: &Context, mode: Mode) -> io::Result<()> {
@@ -93,6 +95,7 @@ fn event_loop(terminal: &mut DefaultTerminal, env: &Env<'_>) -> io::Result<()> {
         model,
         loaded_at: Instant::now(),
         mtime: None,
+        transcripts: Transcripts::default(),
     };
     steps(terminal, env, start).break_value().unwrap_or(Ok(()))
 }
@@ -141,6 +144,7 @@ fn apply(env: &Env<'_>, state: Loop, messages: Vec<Msg>) -> Flow<(Loop, bool)> {
         model,
         loaded_at,
         mtime,
+        transcripts,
     } = state;
     let (model, effects) = messages
         .into_iter()
@@ -155,6 +159,7 @@ fn apply(env: &Env<'_>, state: Loop, messages: Vec<Msg>) -> Flow<(Loop, bool)> {
                 model,
                 loaded_at,
                 mtime,
+                transcripts,
             },
             reload,
         )),
@@ -166,7 +171,7 @@ fn due(env: &Env<'_>, state: &Loop) -> bool {
 }
 
 fn reload(env: &Env<'_>, state: Loop) -> Flow<Loop> {
-    let snapshot = snapshot::load(env.ctx, env.me, env.popup);
+    let (snapshot, transcripts) = snapshot::load(env.ctx, env.me, env.popup, state.transcripts);
     let mtime = store::mtime(&env.ctx.state_dir);
     let (model, effects) = update::update(state.model, Msg::Loaded(snapshot));
     match effect::perform(env.ctx, env.me, &effects) {
@@ -175,6 +180,7 @@ fn reload(env: &Env<'_>, state: Loop) -> Flow<Loop> {
             model,
             loaded_at: Instant::now(),
             mtime,
+            transcripts,
         }),
     }
 }

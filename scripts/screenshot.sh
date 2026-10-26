@@ -31,10 +31,14 @@ t new-session -d -s scratch -n zsh "$(body '~/tmp')"
 socket=$(t display -p '#{socket_path}')
 now=$(date +%s)
 state() { # pane state detail cwd age_seconds branch prompt context_percent
+    local transcript="$TMP/${1#%}.jsonl"
+    # One assistant entry, as Claude Code writes it: the sidebar reads the branch and token usage from it.
+    jq -nc --arg branch "$6" --argjson tokens "$(($8 * 2000))" \
+        '{type:"assistant", gitBranch:$branch, message:{model:"claude-opus-5-5", usage:{input_tokens:$tokens}}}' \
+        >"$transcript"
     jq -n --arg pane "$1" --arg state "$2" --arg detail "$3" --arg cwd "$4" --arg socket "$socket" \
-        --argjson since $((now - $5)) --argjson now "$now" \
-        --arg branch "$6" --arg prompt "$7" --argjson context "$8" \
-        '{session_id:$pane, state:$state, detail:$detail, cwd:$cwd, pane:$pane, socket:$socket, pid:null, since:$since, updated_at:$now, branch:$branch, prompt:$prompt, context:$context}' \
+        --argjson since $((now - $5)) --argjson now "$now" --arg prompt "$7" --arg transcript "$transcript" \
+        '{session_id:$pane, state:$state, detail:$detail, cwd:$cwd, pane:$pane, socket:$socket, pid:null, since:$since, updated_at:$now, prompt:$prompt, transcript:$transcript}' \
         >"$CTS_STATE_DIR/${1#%}.json"
 }
 state "$(t display -p -t work:api '#{pane_id}')" running Bash /src/api 2 retry 'Add retry to the HTTP client' 34
