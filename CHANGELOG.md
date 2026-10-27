@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.7.5] - 2026-10-28
+
 ### Fixed
 
 - A session that started before the update to 0.7.4 shows its branch and context usage again; its hooks keep writing the old format until Claude restarts (#62).
@@ -129,7 +131,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `install.sh` for manual setups, with `--hooks-only` and `--uninstall`.
 - Options: `@cts_width`, `@cts_toggle_key` (several keys allowed), `@cts_popup_key`, `@cts_next_key`, `@cts_prev_key`, `@cts_default`, `@cts_lang` (`en` / `ja`), `@cts_hook_index`.
 
-[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.4...HEAD
+[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.5...HEAD
+[0.7.5]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.4...v0.7.5
 [0.7.4]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.3...v0.7.4
 [0.7.3]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.1...v0.7.2
