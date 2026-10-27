@@ -22,12 +22,20 @@ pub struct Claude {
 impl Claude {
     /// The git branch Claude last worked on; empty when unknown.
     pub fn branch(&self) -> &str {
-        self.latest.as_ref().map_or("", |l| l.branch.as_str())
+        match &self.latest {
+            Some(latest) => &latest.branch,
+            None if self.record.transcript.is_empty() => &self.record.branch,
+            None => "",
+        }
     }
 
     /// How full the context window is, in percent.
     pub fn context(&self) -> Option<u8> {
-        self.latest.as_ref().and_then(|l| l.context)
+        match &self.latest {
+            Some(latest) => latest.context,
+            None if self.record.transcript.is_empty() => self.record.context,
+            None => None,
+        }
     }
 }
 

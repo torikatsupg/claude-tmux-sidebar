@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- A session that started before the update to 0.7.4 shows its branch and context usage again; its hooks keep writing the old format until Claude restarts (#62).
+
 ## [0.7.4] - 2026-10-27
 
 ### Fixed

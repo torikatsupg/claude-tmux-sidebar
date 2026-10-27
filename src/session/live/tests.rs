@@ -83,3 +83,41 @@ fn keeps_the_newest_session_per_pane() {
         .collect();
     assert_eq!(ids, ["new", "x"]);
 }
+
+fn claude(record: Record, latest: Option<Latest>) -> Claude {
+    Claude {
+        record,
+        pane: None,
+        latest,
+    }
+}
+
+#[test]
+fn shows_the_branch_and_context_a_hook_before_0_7_4_wrote() {
+    let record: Record = serde_json::from_str(r#"{"session_id":"a","branch":"main","context":64}"#)
+        .unwrap_or_default();
+    let claude = claude(record, None);
+    assert_eq!(claude.branch(), "main");
+    assert_eq!(claude.context(), Some(64));
+}
+
+#[test]
+fn prefers_the_transcript_to_the_old_branch_and_context() {
+    let record = Record {
+        transcript: "/t".to_owned(),
+        branch: "old".to_owned(),
+        context: Some(64),
+        ..Record::default()
+    };
+    let latest = Latest {
+        branch: "new".to_owned(),
+        context: None,
+    };
+    let read = claude(record.clone(), Some(latest));
+    assert_eq!(read.branch(), "new");
+    assert_eq!(read.context(), None);
+
+    let unread = claude(record, None);
+    assert_eq!(unread.branch(), "");
+    assert_eq!(unread.context(), None);
+}
