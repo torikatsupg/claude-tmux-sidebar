@@ -1,4 +1,5 @@
 use super::*;
+use crate::session::transcript::Usage;
 use crate::tmux::pane::fixture::pane;
 
 fn record(id: &str, pane: &str, socket: &str, updated_at: u64) -> Record {
@@ -98,7 +99,9 @@ fn shows_the_branch_and_context_a_hook_before_0_7_4_wrote() {
         .unwrap_or_default();
     let claude = claude(record, None);
     assert_eq!(claude.branch(), "main");
-    assert_eq!(claude.context(), Some(64));
+    let windows = ContextWindows::parse("claude-opus-5-5=1000000");
+    assert_eq!(claude.context(&windows), Some(64));
+    assert!(claude.has_context());
 }
 
 #[test]
@@ -111,13 +114,28 @@ fn prefers_the_transcript_to_the_old_branch_and_context() {
     };
     let latest = Latest {
         branch: "new".to_owned(),
-        context: None,
+        usage: None,
     };
     let read = claude(record.clone(), Some(latest));
     assert_eq!(read.branch(), "new");
-    assert_eq!(read.context(), None);
+    assert!(!read.has_context());
 
     let unread = claude(record, None);
     assert_eq!(unread.branch(), "");
-    assert_eq!(unread.context(), None);
+    assert!(!unread.has_context());
+}
+
+#[test]
+fn the_transcript_usage_is_measured_against_the_configured_window() {
+    let latest = Latest {
+        branch: "main".to_owned(),
+        usage: Some(Usage {
+            tokens: 100_000,
+            model: "claude-opus-5-5".to_owned(),
+        }),
+    };
+    let claude = claude(Record::default(), Some(latest));
+    let windows = ContextWindows::parse("claude-opus-5-5=1000000");
+    assert_eq!(claude.context(&windows), Some(10));
+    assert_eq!(claude.context(&ContextWindows::default()), Some(50));
 }

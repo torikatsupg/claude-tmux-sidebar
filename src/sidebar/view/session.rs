@@ -55,7 +55,8 @@ pub fn line(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
 /// `▌└ fix the failing test…               42% `: the prompt lines up with the name above it.
 pub fn detail(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
     let record = &claude.record;
-    let (context, color) = claude.context().map_or((String::new(), MUTED), |c| {
+    let windows = &model.snapshot.context_windows;
+    let (context, color) = claude.context(windows).map_or((String::new(), MUTED), |c| {
         (format!("{c}%"), context_color(c))
     });
     let reserved = if context.is_empty() {
