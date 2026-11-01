@@ -3,6 +3,7 @@
 
 mod effect;
 mod input;
+pub mod label;
 pub mod rows;
 pub mod selection;
 pub mod snapshot;
@@ -24,6 +25,7 @@ use crate::session::store;
 use crate::session::transcript::cache::Transcripts;
 use crate::tmux::{self, pane::PaneId};
 use effect::Next;
+use label::Label;
 use theme::Theme;
 use update::{Model, Msg};
 
@@ -47,6 +49,7 @@ struct Env<'a> {
     me: Option<PaneId>,
     popup: bool,
     help: bool,
+    label: Label,
     theme: Theme,
     messages: &'static Messages,
     /// The spinner runs on the clock, not on the number of events.
@@ -72,6 +75,7 @@ pub fn run(ctx: &Context, mode: Mode) -> io::Result<()> {
         me,
         popup,
         help: tmux::global_option("@cts_help").as_deref() != Some("off"),
+        label: Label::parse(tmux::global_option(label::OPTION).as_deref()),
         theme: Theme::from_options(tmux::global_option),
         messages: i18n::messages(lang.as_deref()),
         started: Instant::now(),
@@ -91,6 +95,7 @@ fn event_loop(terminal: &mut DefaultTerminal, env: &Env<'_>) -> io::Result<()> {
     let model = Model {
         popup: env.popup,
         help: env.help,
+        label: env.label,
         theme: env.theme,
         height,
         now: context::now(),

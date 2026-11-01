@@ -41,6 +41,7 @@ pub struct Pane {
     pub id: PaneId,
     pub session: String,
     pub window_index: u32,
+    pub window_name: String,
     pub pane_index: u32,
     /// How many windows the pane's session has.
     pub session_windows: u32,
@@ -53,7 +54,7 @@ pub struct Pane {
 
 /// The `list-panes -F` format that [`parse`] reads.
 pub const FORMAT: &str = "#{pane_id}\t#{session_name}\t#{window_index}\t#{pane_index}\t#{window_id}\t\
-                          #{@cts_sidebar}\t#{pane_active}\t#{pane_last}\t#{window_active}\t#{session_windows}";
+                          #{@cts_sidebar}\t#{pane_active}\t#{pane_last}\t#{window_active}\t#{session_windows}\t#{window_name}";
 
 /// Parses `list-panes -F FORMAT` output, skipping malformed lines.
 pub fn parse(output: &str) -> Vec<Pane> {
@@ -61,7 +62,8 @@ pub fn parse(output: &str) -> Vec<Pane> {
 }
 
 fn parse_line(line: &str) -> Option<Pane> {
-    let fields: Vec<&str> = line.split('\t').collect();
+    // The window name is last and takes the rest of the line, because a name may contain a tab.
+    let fields: Vec<&str> = line.splitn(11, '\t').collect();
     let [
         id,
         session,
@@ -73,6 +75,7 @@ fn parse_line(line: &str) -> Option<Pane> {
         last,
         window_active,
         session_windows,
+        window_name,
     ] = fields.as_slice()
     else {
         return None;
@@ -81,6 +84,7 @@ fn parse_line(line: &str) -> Option<Pane> {
         id: PaneId::parse(id)?,
         session: (*session).to_owned(),
         window_index: window_index.parse().ok()?,
+        window_name: (*window_name).to_owned(),
         pane_index: pane_index.parse().ok()?,
         session_windows: session_windows.parse().ok()?,
         window_id: WindowId::parse(window_id)?,
@@ -119,6 +123,7 @@ pub mod fixture {
             id: PaneId(id),
             session: "s".to_owned(),
             window_index: window,
+            window_name: "zsh".to_owned(),
             pane_index: id,
             session_windows: 1,
             window_id: WindowId(window),
@@ -150,14 +155,20 @@ mod tests {
 
     #[test]
     fn parses_list_panes_output() {
-        let panes =
-            parse("%1\twork\t2\t0\t@4\t\t1\t0\t1\t3\n%2\twork\t2\t1\t@4\t1\t0\t1\t1\t3\nbroken");
+        let panes = parse(
+            "%1\twork\t2\t0\t@4\t\t1\t0\t1\t3\tvim\n%2\twork\t2\t1\t@4\t1\t0\t1\t1\t3\ta\tb\nbroken",
+        );
         assert_eq!(panes.len(), 2);
         assert!(panes.first().is_some_and(|p| p.active
             && !p.sidebar
             && p.window_index == 2
+            && p.window_name == "vim"
             && p.session_windows == 3));
-        assert!(panes.get(1).is_some_and(|p| p.sidebar && p.last));
+        assert!(
+            panes
+                .get(1)
+                .is_some_and(|p| p.sidebar && p.last && p.window_name == "a\tb")
+        );
     }
 
     #[test]
