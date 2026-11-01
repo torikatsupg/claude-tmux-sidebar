@@ -48,7 +48,7 @@ Each session shows its directory and git branch, with the tool in use and how lo
 | `prefix + C-n` / `prefix + C-p` | Go to the next / previous Claude that is done or waiting for you |
 | `j` / `k` / `g` / `G` | Move the selection |
 | `n` / `p` | Select the next / previous done or waiting Claude |
-| `Enter` / click | Go to that pane (or that tmux session, on a session row) |
+| `Enter` / click | Go to that pane (or that window or tmux session, on a window or session row) |
 | `q` | Close |
 
 Sessions, windows and panes are listed in tmux's own order. The selection follows the pane you are focused on.
@@ -67,6 +67,7 @@ set -g @cts_default off       # open the sidebar when tmux starts
 set -g @cts_lang en           # en / ja
 set -g @cts_help on           # show the key help at the bottom
 set -g @cts_label dir         # row label: dir (directory and branch) / window (#I:#W)
+set -g @cts_all_windows off   # also list windows without Claude
 set -g @cts_hook_index 77     # tmux hook array index (change only on conflicts)
 set -g @cts_color_accent '#D97757'  # colors: see below
 set -g @cts_context_windows 'claude-opus-5-5=1000000'  # context window size per model
@@ -75,6 +76,8 @@ set -g @cts_context_windows 'claude-opus-5-5=1000000'  # context window size per
 Avoid keys tmux already binds (e.g. `C-b` is `send-prefix`): the plugin's binding replaces them.
 
 With `@cts_label window`, each row shows its tmux window as `index:name` instead of the directory and branch, and follows a renamed window on the next refresh. Sessions outside tmux keep the directory.
+
+With `@cts_all_windows on`, every tmux window is listed in tmux's order. A window without Claude is a dim `index:name` row: `Enter` or a click goes there, and the cursor stops on it, but `n` / `p` and `prefix + C-n` / `prefix + C-p` skip it. A window with Claude in one of its panes shows only the Claude row. A window linked into several sessions (`link-window`) is listed once, under the last of those sessions in tmux's order, as a Claude in it already is. The sidebar reads the option when it opens.
 
 Each color has its own option and takes a tmux color: a name (`black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, their `bright` variants such as `brightred`, or `default`), `colour0`–`colour255` (or `color0`–`color255`), or `#rrggbb`. An unset or unrecognized value keeps the default. The sidebar reads them when it opens, so reopen it after a change.
 

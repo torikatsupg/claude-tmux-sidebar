@@ -31,24 +31,37 @@ pub struct Snapshot {
     pub context_windows: ContextWindows,
 }
 
+/// Whose list a snapshot is for, and what it lists.
+pub struct Scope {
+    /// The sidebar pane, or the pane a popup was opened from.
+    pub me: Option<PaneId>,
+    pub popup: bool,
+    /// List the windows without Claude too (`@cts_all_windows`).
+    pub all_windows: bool,
+}
+
 /// Reads tmux, the state files and the transcripts that changed since `transcripts`.
-/// `me` is the sidebar pane, or the pane a popup was opened from.
-pub fn load(
-    ctx: &Context,
-    me: Option<PaneId>,
-    popup: bool,
-    transcripts: Transcripts,
-) -> (Snapshot, Transcripts) {
+pub fn load(ctx: &Context, scope: &Scope, transcripts: Transcripts) -> (Snapshot, Transcripts) {
     let panes = tmux::panes();
     let claudes = live::load(&ctx.state_dir, &ctx.socket, &panes);
     let (claudes, transcripts) = with_transcripts(claudes, transcripts);
     let groups = listing::groups(&tmux::sessions(), &claudes);
+    let windows = if scope.all_windows {
+        listing::plain_windows(&panes, &claudes)
+    } else {
+        Vec::new()
+    };
     let context_windows = tmux::global_option(context_window::OPTION)
         .map(|option| ContextWindows::parse(&option))
         .unwrap_or_default();
     let snapshot = Snapshot {
         context_windows,
-        ..from_parts(rows::rows(&groups), &panes, me, popup)
+        ..from_parts(
+            rows::with_windows(&groups, &windows),
+            &panes,
+            scope.me,
+            scope.popup,
+        )
     };
     (snapshot, transcripts)
 }

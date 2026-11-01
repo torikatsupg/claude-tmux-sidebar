@@ -185,13 +185,12 @@ fn destination(snapshot: &Snapshot, key: &RowKey) -> Option<(Target, Option<Wind
             Target::Session(name.clone()),
             snapshot.session_windows.get(name).copied(),
         )),
-        RowKey::Claude(id) => snapshot.rows.iter().find_map(|r| match r {
-            Row::Session(c) if c.record.session_id == *id => c
-                .pane
-                .as_ref()
-                .map(|p| (Target::Pane(p.id), Some(p.window_id))),
-            _ => None,
-        }),
+        RowKey::Claude(_) | RowKey::Window(_) => snapshot
+            .rows
+            .iter()
+            .filter(|r| rows::key(r).as_ref() == Some(key))
+            .find_map(rows::pane)
+            .map(|p| (Target::Pane(p.id), Some(p.window_id))),
     }
 }
 

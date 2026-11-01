@@ -193,3 +193,5 @@ fn a_redundant_sidebar_removes_itself() {
         [Effect::KillSelf, Effect::Exit]
     );
 }
+
+mod windows;
