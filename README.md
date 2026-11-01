@@ -68,6 +68,7 @@ set -g @cts_lang en           # en / ja
 set -g @cts_help on           # show the key help at the bottom
 set -g @cts_hook_index 77     # tmux hook array index (change only on conflicts)
 set -g @cts_color_accent '#D97757'  # colors: see below
+set -g @cts_context_windows 'claude-opus-5-5=1000000'  # context window size per model
 ```
 
 Avoid keys tmux already binds (e.g. `C-b` is `send-prefix`): the plugin's binding replaces them.
@@ -85,6 +86,8 @@ Each color has its own option and takes a tmux color: a name (`black`, `red`, `g
 | `@cts_color_done` | the done mark | `cyan` |
 | `@cts_color_warning` | context window usage from 50% | `yellow` |
 | `@cts_color_critical` | context window usage from 80% | `red` |
+
+`@cts_context_windows` takes space-separated `model=tokens` pairs, where the model is the id Claude Code writes to the transcript (such as `claude-opus-5-5`). Without it, or for a model it does not list, the size is guessed: 1M for a model ending in `[1m]`, a Fable or Mythos model, or more than 200k tokens in use, and 200k otherwise. To find a model's size, run `claude -p --model <model> --output-format json "hi"` and read `modelUsage.<model id>.contextWindow`.
 
 ## Requirements
 

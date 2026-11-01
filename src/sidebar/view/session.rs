@@ -56,9 +56,12 @@ pub fn line(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
 pub fn detail(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
     let record = &claude.record;
     let theme = &model.theme;
-    let (context, color) = claude.context().map_or((String::new(), theme.muted), |c| {
-        (format!("{c}%"), context_color(theme, c))
-    });
+    let windows = &model.snapshot.context_windows;
+    let (context, color) = claude
+        .context(windows)
+        .map_or((String::new(), theme.muted), |c| {
+            (format!("{c}%"), context_color(theme, c))
+        });
     let reserved = if context.is_empty() {
         0
     } else {

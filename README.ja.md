@@ -68,6 +68,7 @@ set -g @cts_lang ja           # en / ja
 set -g @cts_help on           # 下端のキー操作ヘルプを表示
 set -g @cts_hook_index 77     # tmux hook 配列のインデックス（衝突時のみ変更）
 set -g @cts_color_accent '#D97757'  # 色（下の表を参照）
+set -g @cts_context_windows 'claude-opus-5-5=1000000'  # モデルごとの context window のサイズ
 ```
 
 tmux が既に割り当てているキー（例: `C-b` は `send-prefix`）を指定すると、プラグイン側の割り当てで上書きされます。
@@ -85,6 +86,8 @@ tmux が既に割り当てているキー（例: `C-b` は `send-prefix`）を�
 | `@cts_color_done` | 完了の印 | `cyan` |
 | `@cts_color_warning` | context window の使用率（50% から） | `yellow` |
 | `@cts_color_critical` | context window の使用率（80% から） | `red` |
+
+`@cts_context_windows` には `モデル=トークン数` の組を空白区切りで書きます。モデルは Claude Code が transcript に書く ID（`claude-opus-5-5` など）です。設定しないとき、または設定にないモデルは、サイズを推測します。名前が `[1m]` で終わるモデル、Fable と Mythos のモデル、200k トークンを超えて使っているときは 1M、それ以外は 200k です。モデルのサイズは、`claude -p --model <モデル> --output-format json "hi"` を実行して `modelUsage.<モデル ID>.contextWindow` を見れば分かります。
 
 ## 必要なもの
 
