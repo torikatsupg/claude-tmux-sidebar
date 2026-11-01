@@ -1,5 +1,6 @@
 //! Claude Code sessions: the state file each hook writes, and the live view the sidebar builds from them.
 
+pub mod context_window;
 pub mod live;
 pub mod store;
 pub mod transcript;

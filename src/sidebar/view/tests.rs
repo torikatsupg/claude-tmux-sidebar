@@ -2,8 +2,9 @@ use super::*;
 use crate::i18n::{EN, JA};
 use crate::listing::Group;
 use crate::session::Record;
+use crate::session::context_window::ContextWindows;
 use crate::session::live::Claude;
-use crate::session::transcript::Latest;
+use crate::session::transcript::{Latest, Usage};
 use crate::sidebar::rows::RowKey;
 use crate::sidebar::selection::Selection;
 use crate::sidebar::snapshot::Snapshot;
@@ -128,7 +129,7 @@ fn the_cursor_is_a_background_that_keeps_the_row_colors() {
     assert!(line.spans.iter().any(|s| s.style.fg == Some(Color::Cyan)));
 }
 
-fn busy_claude(windows: u32, context: Option<u8>) -> Claude {
+fn busy_claude(windows: u32, tokens: Option<u64>) -> Claude {
     Claude {
         record: Record {
             prompt: "fix the failing sidebar test please".to_owned(),
@@ -140,14 +141,17 @@ fn busy_claude(windows: u32, context: Option<u8>) -> Claude {
         }),
         latest: Some(Latest {
             branch: "feat/rows".to_owned(),
-            context,
+            usage: tokens.map(|tokens| Usage {
+                tokens,
+                model: "claude-opus-5-5".to_owned(),
+            }),
         }),
     }
 }
 
 #[test]
 fn a_session_shows_its_branch_then_its_prompt_and_context() {
-    let screen = screen(&model_of(busy_claude(1, Some(42)), false), &EN);
+    let screen = screen(&model_of(busy_claude(1, Some(84_000)), false), &EN);
     assert_eq!(
         screen.get(3).map(String::as_str),
         Some(" ✓ api feat/rows               2s ")
@@ -173,7 +177,7 @@ fn the_window_index_shows_only_with_several_windows() {
 
 #[test]
 fn a_narrow_row_cuts_the_branch_then_drops_it() {
-    let model = model_of(busy_claude(1, Some(90)), true);
+    let model = model_of(busy_claude(1, Some(180_000)), true);
     let row = |width| lines(&model, &EN, width, model.height).get(3).map(text);
     assert_eq!(row(16).as_deref(), Some(" ✓ api feat… 2s "));
     assert_eq!(row(14).as_deref(), Some(" ✓ api     2s "));
@@ -181,4 +185,14 @@ fn a_narrow_row_cuts_the_branch_then_drops_it() {
     let detail = lines.get(4).cloned().unwrap_or_default();
     assert!(detail.spans.iter().all(|s| s.style.bg == Some(CURSOR)));
     assert!(detail.spans.iter().any(|s| s.style.fg == Some(Color::Red)));
+}
+
+#[test]
+fn the_context_uses_the_configured_window_size() {
+    let mut model = model_of(busy_claude(1, Some(84_000)), false);
+    model.snapshot.context_windows = ContextWindows::parse("claude-opus-5-5=1000000");
+    assert_eq!(
+        screen(&model, &EN).get(4).map(String::as_str),
+        Some(" └ fix the failing sidebar te… 8% ")
+    );
 }

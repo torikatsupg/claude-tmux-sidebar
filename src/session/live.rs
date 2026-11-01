@@ -5,6 +5,7 @@ use std::path::Path;
 
 use itertools::Itertools;
 
+use super::context_window::ContextWindows;
 use super::transcript::Latest;
 use super::{Record, store};
 use crate::process;
@@ -30,12 +31,20 @@ impl Claude {
     }
 
     /// How full the context window is, in percent.
-    pub fn context(&self) -> Option<u8> {
+    pub fn context(&self, windows: &ContextWindows) -> Option<u8> {
         match &self.latest {
-            Some(latest) => latest.context,
+            Some(latest) => latest
+                .usage
+                .as_ref()
+                .map(|u| windows.percent(u.tokens, &u.model)),
             None if self.record.transcript.is_empty() => self.record.context,
             None => None,
         }
+    }
+
+    /// Whether [`context`](Self::context) is known, whatever the window sizes.
+    pub fn has_context(&self) -> bool {
+        self.context(&ContextWindows::default()).is_some()
     }
 }
 

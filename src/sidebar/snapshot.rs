@@ -6,6 +6,7 @@ use std::path::Path;
 use super::rows::{self, Row};
 use crate::context::Context;
 use crate::listing;
+use crate::session::context_window::{self, ContextWindows};
 use crate::session::live::{self, Claude};
 use crate::session::transcript::cache::Transcripts;
 use crate::tmux::{
@@ -26,6 +27,8 @@ pub struct Snapshot {
     pub redundant: bool,
     /// Each tmux session's current window.
     pub session_windows: HashMap<String, WindowId>,
+    /// The sizes set in `@cts_context_windows`.
+    pub context_windows: ContextWindows,
 }
 
 /// Reads tmux, the state files and the transcripts that changed since `transcripts`.
@@ -38,24 +41,34 @@ pub fn load(
 ) -> (Snapshot, Transcripts) {
     let panes = tmux::panes();
     let claudes = live::load(&ctx.state_dir, &ctx.socket, &panes);
+    let (claudes, transcripts) = with_transcripts(claudes, transcripts);
+    let groups = listing::groups(&tmux::sessions(), &claudes);
+    let context_windows = tmux::global_option(context_window::OPTION)
+        .map(|option| ContextWindows::parse(&option))
+        .unwrap_or_default();
+    let snapshot = Snapshot {
+        context_windows,
+        ..from_parts(rows::rows(&groups), &panes, me, popup)
+    };
+    (snapshot, transcripts)
+}
+
+/// `claudes` with what their transcripts say, reading only the transcripts that changed.
+fn with_transcripts(claudes: Vec<Claude>, transcripts: Transcripts) -> (Vec<Claude>, Transcripts) {
     let transcripts = transcripts.refresh(
         claudes
             .iter()
             .map(|c| Path::new(c.record.transcript.as_str()))
             .filter(|p| !p.as_os_str().is_empty()),
     );
-    let claudes: Vec<Claude> = claudes
+    let claudes = claudes
         .into_iter()
         .map(|c| Claude {
             latest: transcripts.latest(&c.record.transcript),
             ..c
         })
         .collect();
-    let groups = listing::groups(&tmux::sessions(), &claudes);
-    (
-        from_parts(rows::rows(&groups), &panes, me, popup),
-        transcripts,
-    )
+    (claudes, transcripts)
 }
 
 /// The pure part of [`load`].
@@ -73,6 +86,7 @@ pub fn from_parts(rows: Vec<Row>, panes: &[Pane], me: Option<PaneId>, popup: boo
             .filter(|p| p.window_active)
             .map(|p| (p.session.clone(), p.window_id))
             .collect(),
+        context_windows: ContextWindows::default(),
     }
 }
 
