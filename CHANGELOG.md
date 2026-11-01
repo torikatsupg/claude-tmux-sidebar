@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- `@cts_color_accent`, `@cts_color_cursor`, `@cts_color_muted`, `@cts_color_dim`, `@cts_color_waiting`, `@cts_color_running`, `@cts_color_done`, `@cts_color_warning` and `@cts_color_critical` options set the sidebar's colors in tmux's color syntax (names, `colourN`, `#rrggbb`) (#71). Without them the sidebar looks as before.
 - The `@cts_context_windows` option sets the context window size of each model, as space-separated `model=tokens` pairs. A model that runs with the 1M window but has no `[1m]` in its id, such as `claude-opus-5-5` on Claude Code 2.1.316, showed five times its real context usage; list it with its size to fix that. Models the option does not list keep the size guessed so far.
 
 ## [0.7.5] - 2026-10-28

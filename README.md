@@ -67,10 +67,25 @@ set -g @cts_default off       # open the sidebar when tmux starts
 set -g @cts_lang en           # en / ja
 set -g @cts_help on           # show the key help at the bottom
 set -g @cts_hook_index 77     # tmux hook array index (change only on conflicts)
+set -g @cts_color_accent '#D97757'  # colors: see below
 set -g @cts_context_windows 'claude-opus-5-5=1000000'  # context window size per model
 ```
 
 Avoid keys tmux already binds (e.g. `C-b` is `send-prefix`): the plugin's binding replaces them.
+
+Each color has its own option and takes a tmux color: a name (`black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, their `bright` variants such as `brightred`, or `default`), `colour0`–`colour255` (or `color0`–`color255`), or `#rrggbb`. An unset or unrecognized value keeps the default. The sidebar reads them when it opens, so reopen it after a change.
+
+| Option | Colors | Default |
+|---|---|---|
+| `@cts_color_accent` | the title and the bar on the left edge that marks your window | `magenta` |
+| `@cts_color_cursor` | the cursor row's background | `colour237` |
+| `@cts_color_muted` | secondary text: branch, prompt, help labels | `colour245` |
+| `@cts_color_dim` | faint text: separator line, idle mark | `brightblack` |
+| `@cts_color_waiting` | the waiting mark | `yellow` |
+| `@cts_color_running` | the running mark | `green` |
+| `@cts_color_done` | the done mark | `cyan` |
+| `@cts_color_warning` | context window usage from 50% | `yellow` |
+| `@cts_color_critical` | context window usage from 80% | `red` |
 
 `@cts_context_windows` takes space-separated `model=tokens` pairs, where the model is the id Claude Code writes to the transcript (such as `claude-opus-5-5`). Without it, or for a model it does not list, the size is guessed: 1M for a model ending in `[1m]`, a Fable or Mythos model, or more than 200k tokens in use, and 200k otherwise. To find a model's size, run `claude -p --model <model> --output-format json "hi"` and read `modelUsage.<model id>.contextWindow`.
 

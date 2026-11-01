@@ -18,6 +18,7 @@ pub struct Model {
     pub height: u16,
     /// The key help is shown on the last line.
     pub help: bool,
+    pub theme: super::theme::Theme,
 }
 
 impl Model {

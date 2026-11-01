@@ -2,7 +2,6 @@ use super::*;
 use crate::i18n::{EN, JA};
 use crate::listing::Group;
 use crate::session::Record;
-use crate::session::context_window::ContextWindows;
 use crate::session::live::Claude;
 use crate::session::transcript::{Latest, Usage};
 use crate::sidebar::rows::RowKey;
@@ -13,6 +12,7 @@ use crate::tmux::pane::Pane;
 use crate::tmux::pane::fixture::pane;
 
 const WIDTH: u16 = 34;
+const CURSOR: Color = Theme::DEFAULT.cursor;
 
 fn record(state: Status, detail: &str) -> Record {
     Record {
@@ -187,12 +187,5 @@ fn a_narrow_row_cuts_the_branch_then_drops_it() {
     assert!(detail.spans.iter().any(|s| s.style.fg == Some(Color::Red)));
 }
 
-#[test]
-fn the_context_uses_the_configured_window_size() {
-    let mut model = model_of(busy_claude(1, Some(84_000)), false);
-    model.snapshot.context_windows = ContextWindows::parse("claude-opus-5-5=1000000");
-    assert_eq!(
-        screen(&model, &EN).get(4).map(String::as_str),
-        Some(" └ fix the failing sidebar te… 8% ")
-    );
-}
+mod colors;
+mod context_window;
