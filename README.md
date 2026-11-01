@@ -67,9 +67,24 @@ set -g @cts_default off       # open the sidebar when tmux starts
 set -g @cts_lang en           # en / ja
 set -g @cts_help on           # show the key help at the bottom
 set -g @cts_hook_index 77     # tmux hook array index (change only on conflicts)
+set -g @cts_color_accent '#D97757'  # colors: see below
 ```
 
 Avoid keys tmux already binds (e.g. `C-b` is `send-prefix`): the plugin's binding replaces them.
+
+Each color has its own option and takes a tmux color: a name (`black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, their `bright` variants such as `brightred`, or `default`), `colour0`–`colour255` (or `color0`–`color255`), or `#rrggbb`. An unset or unrecognized value keeps the default. The sidebar reads them when it opens, so reopen it after a change.
+
+| Option | Colors | Default |
+|---|---|---|
+| `@cts_color_accent` | the title and the bar on the left edge that marks your window | `magenta` |
+| `@cts_color_cursor` | the cursor row's background | `colour237` |
+| `@cts_color_muted` | secondary text: branch, prompt, help labels | `colour245` |
+| `@cts_color_dim` | faint text: separator line, idle mark | `brightblack` |
+| `@cts_color_waiting` | the waiting mark | `yellow` |
+| `@cts_color_running` | the running mark | `green` |
+| `@cts_color_done` | the done mark | `cyan` |
+| `@cts_color_warning` | context window usage from 50% | `yellow` |
+| `@cts_color_critical` | context window usage from 80% | `red` |
 
 ## Requirements
 

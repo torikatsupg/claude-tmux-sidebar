@@ -67,9 +67,24 @@ set -g @cts_default off       # tmux 起動時に開いておくか
 set -g @cts_lang ja           # en / ja
 set -g @cts_help on           # 下端のキー操作ヘルプを表示
 set -g @cts_hook_index 77     # tmux hook 配列のインデックス（衝突時のみ変更）
+set -g @cts_color_accent '#D97757'  # 色（下の表を参照）
 ```
 
 tmux が既に割り当てているキー（例: `C-b` は `send-prefix`）を指定すると、プラグイン側の割り当てで上書きされます。
+
+色は役割ごとに別の設定で、tmux と同じ書き方で指定します。色名（`black` `red` `green` `yellow` `blue` `magenta` `cyan` `white` と、`brightred` のような `bright` 付き、`default`）、`colour0`〜`colour255`（`color0`〜`color255` も可）、`#rrggbb` のどれかです。未設定や読めない値なら既定の色のままです。サイドバーは開くときに読むので、変えたら開き直してください。
+
+| 設定 | 色を付ける箇所 | 既定値 |
+|---|---|---|
+| `@cts_color_accent` | タイトルと、今いるウィンドウを示す左端のバー | `magenta` |
+| `@cts_color_cursor` | カーソル行の背景 | `colour237` |
+| `@cts_color_muted` | 補足の文字（ブランチ、プロンプト、ヘルプの説明） | `colour245` |
+| `@cts_color_dim` | 薄い文字（区切り線、待機の印） | `brightblack` |
+| `@cts_color_waiting` | 承認待ちの印 | `yellow` |
+| `@cts_color_running` | 稼働中の印 | `green` |
+| `@cts_color_done` | 完了の印 | `cyan` |
+| `@cts_color_warning` | context window の使用率（50% から） | `yellow` |
+| `@cts_color_critical` | context window の使用率（80% から） | `red` |
 
 ## 必要なもの
 

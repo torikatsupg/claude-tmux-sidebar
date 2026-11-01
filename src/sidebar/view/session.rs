@@ -4,9 +4,9 @@
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 
-use super::{ACCENT, DIM, MUTED};
 use crate::session::Status;
 use crate::session::live::Claude;
+use crate::sidebar::theme::Theme;
 use crate::sidebar::update::Model;
 use crate::text::{self, age, truncate};
 
@@ -19,18 +19,18 @@ const MIN_BRANCH_WIDTH: usize = 4;
 const CONTEXT_WARN: u8 = 50;
 const CONTEXT_ALARM: u8 = 80;
 
-pub fn look(status: Status) -> (&'static str, Color) {
+pub fn look(theme: &Theme, status: Status) -> (&'static str, Color) {
     match status {
-        Status::Waiting => ("◆", Color::Yellow),
-        Status::Running => ("●", Color::Green),
-        Status::Done => ("✓", Color::Cyan),
-        Status::Idle => ("○", DIM),
+        Status::Waiting => ("◆", theme.waiting),
+        Status::Running => ("●", theme.running),
+        Status::Done => ("✓", theme.done),
+        Status::Idle => ("○", theme.dim),
     }
 }
 
 /// `▌● 2:api main                        Bash 3s `; the bar marks the window you are in.
 pub fn line(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
-    let (_, color) = look(claude.record.state);
+    let (_, color) = look(&model.theme, claude.record.state);
     let right = truncate(
         &status_text(model, claude),
         width.saturating_sub(MIN_NAME_WIDTH),
@@ -41,11 +41,11 @@ pub fn line(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
     let here = here(model, claude);
     let used = text::width(&name) + text::width(&branch) + text::width(&right);
     Line::from(vec![
-        marker(here),
+        marker(model, here),
         icon(model, claude.record.state),
         Span::raw(" "),
         Span::styled(name, bold_if(here)),
-        Span::styled(branch, MUTED),
+        Span::styled(branch, model.theme.muted),
         Span::raw(" ".repeat(width.saturating_sub(4 + used))),
         Span::styled(right, color),
         Span::raw(" "),
@@ -55,8 +55,9 @@ pub fn line(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
 /// `▌└ fix the failing test…               42% `: the prompt lines up with the name above it.
 pub fn detail(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
     let record = &claude.record;
-    let (context, color) = claude.context().map_or((String::new(), MUTED), |c| {
-        (format!("{c}%"), context_color(c))
+    let theme = &model.theme;
+    let (context, color) = claude.context().map_or((String::new(), theme.muted), |c| {
+        (format!("{c}%"), context_color(theme, c))
     });
     let reserved = if context.is_empty() {
         0
@@ -66,22 +67,22 @@ pub fn detail(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
     let prompt = truncate(&record.prompt, width.saturating_sub(4 + reserved));
     let gap = width.saturating_sub(4 + text::width(&prompt) + text::width(&context));
     Line::from(vec![
-        marker(here(model, claude)),
-        Span::styled("└ ", DIM),
-        Span::styled(prompt, MUTED),
+        marker(model, here(model, claude)),
+        Span::styled("└ ", theme.dim),
+        Span::styled(prompt, theme.muted),
         Span::raw(" ".repeat(gap)),
         Span::styled(context, color),
         Span::raw(" "),
     ])
 }
 
-fn context_color(percent: u8) -> Color {
+fn context_color(theme: &Theme, percent: u8) -> Color {
     if percent >= CONTEXT_ALARM {
-        Color::Red
+        theme.critical
     } else if percent >= CONTEXT_WARN {
-        Color::Yellow
+        theme.warning
     } else {
-        MUTED
+        theme.muted
     }
 }
 
@@ -102,9 +103,9 @@ fn branch(branch: &str, room: usize) -> String {
 }
 
 /// The bar on the left edge for the window you are in.
-fn marker(here: bool) -> Span<'static> {
+fn marker(model: &Model, here: bool) -> Span<'static> {
     if here {
-        Span::styled("▌", ACCENT)
+        Span::styled("▌", model.theme.accent)
     } else {
         Span::raw(" ")
     }
@@ -112,7 +113,7 @@ fn marker(here: bool) -> Span<'static> {
 
 /// The status icon; a running session spins.
 fn icon(model: &Model, status: Status) -> Span<'static> {
-    let (icon, color) = look(status);
+    let (icon, color) = look(&model.theme, status);
     let spinner = SPINNER
         .get(model.frame % SPINNER.len())
         .filter(|_| status == Status::Running);

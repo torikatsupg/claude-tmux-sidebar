@@ -6,6 +6,7 @@ mod input;
 pub mod rows;
 pub mod selection;
 pub mod snapshot;
+pub mod theme;
 pub mod update;
 mod view;
 
@@ -23,6 +24,7 @@ use crate::session::store;
 use crate::session::transcript::cache::Transcripts;
 use crate::tmux::{self, pane::PaneId};
 use effect::Next;
+use theme::Theme;
 use update::{Model, Msg};
 
 /// Input wait per step; also the spinner speed.
@@ -45,6 +47,7 @@ struct Env<'a> {
     me: Option<PaneId>,
     popup: bool,
     help: bool,
+    theme: Theme,
     messages: &'static Messages,
     /// The spinner runs on the clock, not on the number of events.
     started: Instant,
@@ -69,6 +72,7 @@ pub fn run(ctx: &Context, mode: Mode) -> io::Result<()> {
         me,
         popup,
         help: tmux::global_option("@cts_help").as_deref() != Some("off"),
+        theme: Theme::from_options(tmux::global_option),
         messages: i18n::messages(lang.as_deref()),
         started: Instant::now(),
     };
@@ -87,6 +91,7 @@ fn event_loop(terminal: &mut DefaultTerminal, env: &Env<'_>) -> io::Result<()> {
     let model = Model {
         popup: env.popup,
         help: env.help,
+        theme: env.theme,
         height,
         now: context::now(),
         ..Model::default()

@@ -12,6 +12,7 @@ use crate::tmux::pane::Pane;
 use crate::tmux::pane::fixture::pane;
 
 const WIDTH: u16 = 34;
+const CURSOR: Color = Theme::DEFAULT.cursor;
 
 fn record(state: Status, detail: &str) -> Record {
     Record {
@@ -182,3 +183,5 @@ fn a_narrow_row_cuts_the_branch_then_drops_it() {
     assert!(detail.spans.iter().all(|s| s.style.bg == Some(CURSOR)));
     assert!(detail.spans.iter().any(|s| s.style.fg == Some(Color::Red)));
 }
+
+mod colors;

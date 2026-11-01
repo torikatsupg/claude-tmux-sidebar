@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- `@cts_color_accent`, `@cts_color_cursor`, `@cts_color_muted`, `@cts_color_dim`, `@cts_color_waiting`, `@cts_color_running`, `@cts_color_done`, `@cts_color_warning` and `@cts_color_critical` options set the sidebar's colors in tmux's color syntax (names, `colourN`, `#rrggbb`) (#71). Without them the sidebar looks as before.
+
 ## [0.7.5] - 2026-10-28
 
 ### Fixed
