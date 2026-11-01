@@ -66,12 +66,15 @@ set -g @cts_prev_key C-p
 set -g @cts_default off       # tmux 起動時に開いておくか
 set -g @cts_lang ja           # en / ja
 set -g @cts_help on           # 下端のキー操作ヘルプを表示
+set -g @cts_label dir         # 行に出す名前: dir（ディレクトリとブランチ）/ window（#I:#W）
 set -g @cts_hook_index 77     # tmux hook 配列のインデックス（衝突時のみ変更）
 set -g @cts_color_accent '#D97757'  # 色（下の表を参照）
 set -g @cts_context_windows 'claude-opus-5-5=1000000'  # モデルごとの context window のサイズ
 ```
 
 tmux が既に割り当てているキー（例: `C-b` は `send-prefix`）を指定すると、プラグイン側の割り当てで上書きされます。
+
+`@cts_label window` にすると、各行にはディレクトリとブランチの代わりに tmux のウィンドウを `番号:名前` で出します。ウィンドウ名を変えれば、次の更新で新しい名前になります。tmux の外で動いているセッションはディレクトリのままです。
 
 色は役割ごとに別の設定で、tmux と同じ書き方で指定します。色名（`black` `red` `green` `yellow` `blue` `magenta` `cyan` `white` と、`brightred` のような `bright` 付き、`default`）、`colour0`〜`colour255`（`color0`〜`color255` も可）、`#rrggbb` のどれかです。未設定や読めない値なら既定の色のままです。サイドバーは開くときに読むので、変えたら開き直してください。
 

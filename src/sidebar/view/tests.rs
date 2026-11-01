@@ -189,3 +189,4 @@ fn a_narrow_row_cuts_the_branch_then_drops_it() {
 
 mod colors;
 mod context_window;
+mod label;

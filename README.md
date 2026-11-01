@@ -66,12 +66,15 @@ set -g @cts_prev_key C-p
 set -g @cts_default off       # open the sidebar when tmux starts
 set -g @cts_lang en           # en / ja
 set -g @cts_help on           # show the key help at the bottom
+set -g @cts_label dir         # row label: dir (directory and branch) / window (#I:#W)
 set -g @cts_hook_index 77     # tmux hook array index (change only on conflicts)
 set -g @cts_color_accent '#D97757'  # colors: see below
 set -g @cts_context_windows 'claude-opus-5-5=1000000'  # context window size per model
 ```
 
 Avoid keys tmux already binds (e.g. `C-b` is `send-prefix`): the plugin's binding replaces them.
+
+With `@cts_label window`, each row shows its tmux window as `index:name` instead of the directory and branch, and follows a renamed window on the next refresh. Sessions outside tmux keep the directory.
 
 Each color has its own option and takes a tmux color: a name (`black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, their `bright` variants such as `brightred`, or `default`), `colour0`–`colour255` (or `color0`–`color255`), or `#rrggbb`. An unset or unrecognized value keeps the default. The sidebar reads them when it opens, so reopen it after a change.
 

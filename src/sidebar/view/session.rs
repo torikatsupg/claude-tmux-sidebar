@@ -1,11 +1,12 @@
-//! One Claude session: status icon, directory, branch, and the tool and age on the right; below it the
-//! last prompt and context usage.
+//! One Claude session: status icon, directory and branch (or the tmux window), and the tool and age on
+//! the right; below it the last prompt and context usage.
 
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 
 use crate::session::Status;
 use crate::session::live::Claude;
+use crate::sidebar::label::Label;
 use crate::sidebar::theme::Theme;
 use crate::sidebar::update::Model;
 use crate::text::{self, age, truncate};
@@ -36,8 +37,7 @@ pub fn line(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
         width.saturating_sub(MIN_NAME_WIDTH),
     );
     let room = width.saturating_sub(5 + text::width(&right));
-    let name = truncate(&name(claude), room);
-    let branch = branch(claude.branch(), room.saturating_sub(text::width(&name)));
+    let (name, branch) = label(model, claude, room);
     let here = here(model, claude);
     let used = text::width(&name) + text::width(&branch) + text::width(&right);
     Line::from(vec![
@@ -97,6 +97,18 @@ fn here(model: &Model, claude: &Claude) -> bool {
         .is_some_and(|p| Some(p.window_id) == model.snapshot.window)
 }
 
+/// The name and the muted text after it, cut to `room` cells together.
+fn label(model: &Model, claude: &Claude, room: usize) -> (String, String) {
+    match model.label {
+        Label::Dir => {
+            let name = truncate(&name(claude), room);
+            let branch = branch(claude.branch(), room.saturating_sub(text::width(&name)));
+            (name, branch)
+        }
+        Label::Window => (truncate(&window(claude), room), String::new()),
+    }
+}
+
 /// ` main` after the name, cut to `room` cells; empty when there is no branch or no room for it.
 fn branch(branch: &str, room: usize) -> String {
     if branch.is_empty() || room < MIN_BRANCH_WIDTH + 1 {
@@ -144,6 +156,14 @@ fn name(claude: &Claude) -> String {
         .as_ref()
         .filter(|p| p.session_windows > 1)
         .map_or_else(|| dir.clone(), |p| format!("{}:{dir}", p.window_index))
+}
+
+/// `#I:#W` of the session's window; the directory outside tmux.
+fn window(claude: &Claude) -> String {
+    claude.pane.as_ref().map_or_else(
+        || name(claude),
+        |p| format!("{}:{}", p.window_index, p.window_name),
+    )
 }
 
 /// `[detail ]age`; the icon already shows the status, and the detail (tool name) is shown only while
