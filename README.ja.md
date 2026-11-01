@@ -48,7 +48,7 @@ tmux で Claude Code を何本も並行して動かしていると、どれが�
 | `prefix + C-n` / `prefix + C-p` | 次 / 前の完了・承認待ちの Claude へ移動 |
 | `j` / `k` / `g` / `G` | 選択移動 |
 | `n` / `p` | 次 / 前の完了・承認待ちの Claude を選択 |
-| `Enter` / クリック | そのペイン（セッション行ならその tmux セッション）へ移動 |
+| `Enter` / クリック | そのペイン（ウィンドウ行ならそのウィンドウ、セッション行ならその tmux セッション）へ移動 |
 | `q` | 閉じる |
 
 セッション・ウィンドウ・ペインは tmux と同じ順に並びます。選択行は今フォーカスしているペインに追従します。
@@ -67,6 +67,7 @@ set -g @cts_default off       # tmux 起動時に開いておくか
 set -g @cts_lang ja           # en / ja
 set -g @cts_help on           # 下端のキー操作ヘルプを表示
 set -g @cts_label dir         # 行に出す名前: dir（ディレクトリとブランチ）/ window（#I:#W）
+set -g @cts_all_windows off   # Claude のいないウィンドウも一覧に出す
 set -g @cts_hook_index 77     # tmux hook 配列のインデックス（衝突時のみ変更）
 set -g @cts_color_accent '#D97757'  # 色（下の表を参照）
 set -g @cts_context_windows 'claude-opus-5-5=1000000'  # モデルごとの context window のサイズ
@@ -75,6 +76,8 @@ set -g @cts_context_windows 'claude-opus-5-5=1000000'  # モデルごとの cont
 tmux が既に割り当てているキー（例: `C-b` は `send-prefix`）を指定すると、プラグイン側の割り当てで上書きされます。
 
 `@cts_label window` にすると、各行にはディレクトリとブランチの代わりに tmux のウィンドウを `番号:名前` で出します。ウィンドウ名を変えれば、次の更新で新しい名前になります。tmux の外で動いているセッションはディレクトリのままです。
+
+`@cts_all_windows on` にすると、tmux のウィンドウをすべて tmux と同じ順に並べます。Claude のいないウィンドウは `番号:名前` の薄い行になり、`Enter` かクリックでそのウィンドウへ移動します。カーソルはこの行にも止まりますが、`n` / `p` と `prefix + C-n` / `prefix + C-p` では飛ばします。どれかのペインで Claude が動いているウィンドウは、Claude の行だけを出します。`link-window` で複数のセッションに入っているウィンドウは、そのうち tmux の順で最後のセッションの下に 1 回だけ出します。Claude の行も同じ扱いです。この設定はサイドバーを開くときに読みます。
 
 色は役割ごとに別の設定で、tmux と同じ書き方で指定します。色名（`black` `red` `green` `yellow` `blue` `magenta` `cyan` `white` と、`brightred` のような `bright` 付き、`default`）、`colour0`〜`colour255`（`color0`〜`color255` も可）、`#rrggbb` のどれかです。未設定や読めない値なら既定の色のままです。サイドバーは開くときに読むので、変えたら開き直してください。
 

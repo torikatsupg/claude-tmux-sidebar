@@ -46,8 +46,7 @@ pub enum Mode {
 /// Everything a step needs that never changes.
 struct Env<'a> {
     ctx: &'a Context,
-    me: Option<PaneId>,
-    popup: bool,
+    scope: snapshot::Scope,
     help: bool,
     label: Label,
     theme: Theme,
@@ -72,8 +71,11 @@ pub fn run(ctx: &Context, mode: Mode) -> io::Result<()> {
     let lang = tmux::global_option("@cts_lang");
     let env = Env {
         ctx,
-        me,
-        popup,
+        scope: snapshot::Scope {
+            me,
+            popup,
+            all_windows: tmux::global_option("@cts_all_windows").as_deref() == Some("on"),
+        },
         help: tmux::global_option("@cts_help").as_deref() != Some("off"),
         label: Label::parse(tmux::global_option(label::OPTION).as_deref()),
         theme: Theme::from_options(tmux::global_option),
@@ -93,7 +95,7 @@ type Flow<T> = ControlFlow<io::Result<()>, T>;
 fn event_loop(terminal: &mut DefaultTerminal, env: &Env<'_>) -> io::Result<()> {
     let height = terminal.size()?.height;
     let model = Model {
-        popup: env.popup,
+        popup: env.scope.popup,
         help: env.help,
         label: env.label,
         theme: env.theme,
@@ -118,7 +120,7 @@ fn steps(terminal: &mut DefaultTerminal, env: &Env<'_>, start: Loop) -> Flow<Loo
 /// Draws, waits briefly for input, applies the messages, and reloads when due.
 fn step(terminal: &mut DefaultTerminal, env: &Env<'_>, state: Loop) -> Flow<Loop> {
     io_flow(terminal.draw(|frame| view::render(&state.model, env.messages, frame)))?;
-    let input = io_flow(read_input(env.popup))?;
+    let input = io_flow(read_input(env.scope.popup))?;
     let messages = input.into_iter().chain([tick(env.started)]).collect();
     let (state, forced) = apply(env, state, messages)?;
     if forced || due(env, &state) {
@@ -162,7 +164,7 @@ fn apply(env: &Env<'_>, state: Loop, messages: Vec<Msg>) -> Flow<(Loop, bool)> {
             let (model, effects) = update::update(model, msg);
             (model, done.into_iter().chain(effects).collect())
         });
-    match effect::perform(env.ctx, env.me, &effects) {
+    match effect::perform(env.ctx, env.scope.me, &effects) {
         Next::Stop => ControlFlow::Break(Ok(())),
         Next::Continue { reload } => ControlFlow::Continue((
             Loop {
@@ -181,10 +183,10 @@ fn due(env: &Env<'_>, state: &Loop) -> bool {
 }
 
 fn reload(env: &Env<'_>, state: Loop) -> Flow<Loop> {
-    let (snapshot, transcripts) = snapshot::load(env.ctx, env.me, env.popup, state.transcripts);
+    let (snapshot, transcripts) = snapshot::load(env.ctx, &env.scope, state.transcripts);
     let mtime = store::mtime(&env.ctx.state_dir);
     let (model, effects) = update::update(state.model, Msg::Loaded(snapshot));
-    match effect::perform(env.ctx, env.me, &effects) {
+    match effect::perform(env.ctx, env.scope.me, &effects) {
         Next::Stop => ControlFlow::Break(Ok(())),
         Next::Continue { .. } => ControlFlow::Continue(Loop {
             model,

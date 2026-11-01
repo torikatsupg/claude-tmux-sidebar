@@ -13,6 +13,7 @@ use crate::listing::GroupName;
 use crate::session::Status;
 
 mod session;
+mod window;
 
 const TITLE: &str = "Claude";
 /// Statuses counted in the title bar, in order.
@@ -110,6 +111,7 @@ fn row_line(model: &Model, messages: &Messages, row: &Row, width: usize) -> Line
         Row::Heading(name) => heading(name, messages),
         Row::Session(claude) => session::line(model, claude, width),
         Row::Detail(claude) => session::detail(model, claude, width),
+        Row::Window(pane) => window::line(model, pane, width),
     };
     if selected {
         highlight(line, width, model.theme.cursor)

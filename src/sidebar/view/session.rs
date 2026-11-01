@@ -118,7 +118,7 @@ fn branch(branch: &str, room: usize) -> String {
 }
 
 /// The bar on the left edge for the window you are in.
-fn marker(model: &Model, here: bool) -> Span<'static> {
+pub(super) fn marker(model: &Model, here: bool) -> Span<'static> {
     if here {
         Span::styled("▌", model.theme.accent)
     } else {
@@ -160,10 +160,10 @@ fn name(claude: &Claude) -> String {
 
 /// `#I:#W` of the session's window; the directory outside tmux.
 fn window(claude: &Claude) -> String {
-    claude.pane.as_ref().map_or_else(
-        || name(claude),
-        |p| format!("{}:{}", p.window_index, p.window_name),
-    )
+    claude
+        .pane
+        .as_ref()
+        .map_or_else(|| name(claude), super::window::label)
 }
 
 /// `[detail ]age`; the icon already shows the status, and the detail (tool name) is shown only while
