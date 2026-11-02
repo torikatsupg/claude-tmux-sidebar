@@ -5,6 +5,8 @@ use crate::tmux::pane::Pane;
 const OPTION: &str = "@cts_label";
 const SINGLE_WINDOW_OPTION: &str = "@cts_single_window";
 
+/// The type's default is the flat `Dir`, the plain layout; the option's default is `Auto` (see
+/// [`Label::parse`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Label {
     /// The directory and the git branch.
@@ -35,13 +37,13 @@ impl Label {
         )
     }
 
-    /// The label for the option values; the directory for anything unknown or unset.
+    /// The label for the option values; the tree for anything unknown or unset.
     pub fn parse(label: Option<&str>, single_window: Option<&str>) -> Self {
         match label {
+            Some("dir") => Self::Dir,
             Some("window") => Self::Window,
-            Some("auto") if single_window == Some("lines") => Self::Auto(SingleWindow::Lines),
-            Some("auto") => Self::Auto(SingleWindow::Inline),
-            _ => Self::Dir,
+            _ if single_window == Some("lines") => Self::Auto(SingleWindow::Lines),
+            _ => Self::Auto(SingleWindow::Inline),
         }
     }
 
@@ -84,8 +86,10 @@ mod tests {
     fn reads_the_options() {
         let inline = Label::Auto(SingleWindow::Inline);
         let lines = Label::Auto(SingleWindow::Lines);
-        assert_eq!(Label::parse(None, None), Label::Dir);
-        assert_eq!(Label::parse(Some("other"), Some("lines")), Label::Dir);
+        assert_eq!(Label::parse(None, None), inline);
+        assert_eq!(Label::parse(None, Some("lines")), lines);
+        assert_eq!(Label::parse(Some("other"), Some("lines")), lines);
+        assert_eq!(Label::parse(Some("dir"), Some("lines")), Label::Dir);
         assert_eq!(Label::parse(Some("window"), Some("lines")), Label::Window);
         assert_eq!(Label::parse(Some("auto"), None), inline);
         assert_eq!(Label::parse(Some("auto"), Some("other")), inline);
