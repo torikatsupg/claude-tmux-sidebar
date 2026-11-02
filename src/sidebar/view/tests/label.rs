@@ -60,10 +60,10 @@ fn a_named_window_is_a_heading_over_indented_rows() {
     let screen = screen(&auto_model(true, 2, SingleWindow::Inline), &EN);
     assert_eq!(screen.get(3).map(String::as_str), Some("   2:mywork"));
     let row = screen.get(4).cloned().unwrap_or_default();
-    assert!(row.starts_with("   ✓ ") && !row.contains("2:"), "{row}");
+    assert!(row.starts_with("     ✓ ") && !row.contains("2:"), "{row}");
     assert!(row.contains("feat"), "the branch stays: {row}");
     let detail = screen.get(5).cloned().unwrap_or_default();
-    assert!(detail.starts_with("   └ "), "{detail}");
+    assert!(detail.starts_with("     └ "), "{detail}");
 }
 
 #[test]

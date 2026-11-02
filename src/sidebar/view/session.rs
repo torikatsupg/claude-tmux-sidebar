@@ -17,7 +17,7 @@ const MIN_NAME_WIDTH: usize = 12;
 /// Context usage from this percent on is a warning, and from the next one on an alarm.
 const CONTEXT_WARN: u8 = 50;
 const CONTEXT_ALARM: u8 = 80;
-const NESTED: &str = "  ";
+const NESTED: &str = "    ";
 
 pub fn look(theme: &Theme, status: Status) -> (&'static str, Color) {
     match status {
