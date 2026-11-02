@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-02
+
 ### Added
 
 - `claude-tmux-sidebar statusline` records each session's real context window size from Claude Code's status line input. Add one line to your status line script, as the README shows, and usage needs no `@cts_context_windows`; the recorded size goes before that option and the guess (#84).
@@ -148,7 +150,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `install.sh` for manual setups, with `--hooks-only` and `--uninstall`.
 - Options: `@cts_width`, `@cts_toggle_key` (several keys allowed), `@cts_popup_key`, `@cts_next_key`, `@cts_prev_key`, `@cts_default`, `@cts_lang` (`en` / `ja`), `@cts_hook_index`.
 
-[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.5...v0.8.0
 [0.7.5]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.4...v0.7.5
 [0.7.4]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.3...v0.7.4
