@@ -9,6 +9,8 @@ pub enum Label {
     Dir,
     /// The tmux window as `#I:#W`.
     Window,
+    /// The tmux window when it was named by hand, otherwise the directory and the git branch.
+    Auto,
 }
 
 impl Label {
@@ -16,6 +18,7 @@ impl Label {
     pub fn parse(value: Option<&str>) -> Self {
         match value {
             Some("window") => Self::Window,
+            Some("auto") => Self::Auto,
             _ => Self::Dir,
         }
     }

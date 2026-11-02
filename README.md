@@ -66,7 +66,7 @@ set -g @cts_prev_key C-p
 set -g @cts_default off       # open the sidebar when tmux starts
 set -g @cts_lang en           # en / ja
 set -g @cts_help on           # show the key help at the bottom
-set -g @cts_label dir         # row label: dir (directory and branch) / window (#I:#W)
+set -g @cts_label dir         # row label: dir (directory and branch) / window (#I:#W) / auto
 set -g @cts_all_windows off   # also list windows without Claude
 set -g @cts_hook_index 77     # tmux hook array index (change only on conflicts)
 set -g @cts_color_accent '#D97757'  # colors: see below
@@ -76,6 +76,8 @@ set -g @cts_context_windows 'claude-opus-5-5=1000000'  # context window size per
 Avoid keys tmux already binds (e.g. `C-b` is `send-prefix`): the plugin's binding replaces them.
 
 With `@cts_label window`, each row shows its tmux window as `index:name` instead of the directory and branch, and follows a renamed window on the next refresh. Sessions outside tmux keep the directory.
+
+With `@cts_label auto`, a window you named yourself shows as `index:name`, and any other keeps the directory and branch. tmux names a window after what runs in it, which for Claude Code is its version number. A window counts as named when its `automatic-rename` is off, which `rename-window` and `new-window -n` do for you.
 
 With `@cts_all_windows on`, every tmux window is listed in tmux's order. A window without Claude is a dim `index:name` row: `Enter` or a click goes there, and the cursor stops on it, but `n` / `p` and `prefix + C-n` / `prefix + C-p` skip it. A window with Claude in one of its panes shows only the Claude row. A window linked into several sessions (`link-window`) is listed once, under the last of those sessions in tmux's order, as a Claude in it already is. The sidebar reads the option when it opens.
 

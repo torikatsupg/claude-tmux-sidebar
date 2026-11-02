@@ -99,13 +99,15 @@ fn here(model: &Model, claude: &Claude) -> bool {
 
 /// The name and the muted text after it, cut to `room` cells together.
 fn label(model: &Model, claude: &Claude, room: usize) -> (String, String) {
+    let named = claude.pane.as_ref().is_some_and(|p| p.window_named);
     match model.label {
-        Label::Dir => {
+        Label::Window => (truncate(&window(claude), room), String::new()),
+        Label::Auto if named => (truncate(&window(claude), room), String::new()),
+        Label::Dir | Label::Auto => {
             let name = truncate(&name(claude), room);
             let branch = branch(claude.branch(), room.saturating_sub(text::width(&name)));
             (name, branch)
         }
-        Label::Window => (truncate(&window(claude), room), String::new()),
     }
 }
 

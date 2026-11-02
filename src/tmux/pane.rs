@@ -42,6 +42,8 @@ pub struct Pane {
     pub session: String,
     pub window_index: u32,
     pub window_name: String,
+    /// The window name was set by hand: tmux turns `automatic-rename` off for such a window.
+    pub window_named: bool,
     pub pane_index: u32,
     /// How many windows the pane's session has.
     pub session_windows: u32,
@@ -54,7 +56,7 @@ pub struct Pane {
 
 /// The `list-panes -F` format that [`parse`] reads.
 pub const FORMAT: &str = "#{pane_id}\t#{session_name}\t#{window_index}\t#{pane_index}\t#{window_id}\t\
-                          #{@cts_sidebar}\t#{pane_active}\t#{pane_last}\t#{window_active}\t#{session_windows}\t#{window_name}";
+                          #{@cts_sidebar}\t#{pane_active}\t#{pane_last}\t#{window_active}\t#{session_windows}\t#{automatic-rename}\t#{window_name}";
 
 /// Parses `list-panes -F FORMAT` output, skipping malformed lines.
 pub fn parse(output: &str) -> Vec<Pane> {
@@ -63,7 +65,19 @@ pub fn parse(output: &str) -> Vec<Pane> {
 
 fn parse_line(line: &str) -> Option<Pane> {
     // The window name is last and takes the rest of the line, because a name may contain a tab.
-    let fields: Vec<&str> = line.splitn(11, '\t').collect();
+    let fields: Vec<&str> = line.splitn(12, '\t').collect();
+    let [fields @ .., automatic_rename, window_name] = fields.as_slice() else {
+        return None;
+    };
+    Some(Pane {
+        window_name: (*window_name).to_owned(),
+        window_named: *automatic_rename == "0",
+        ..parse_fields(fields)?
+    })
+}
+
+/// The fields before the window's name.
+fn parse_fields(fields: &[&str]) -> Option<Pane> {
     let [
         id,
         session,
@@ -75,8 +89,7 @@ fn parse_line(line: &str) -> Option<Pane> {
         last,
         window_active,
         session_windows,
-        window_name,
-    ] = fields.as_slice()
+    ] = fields
     else {
         return None;
     };
@@ -84,7 +97,8 @@ fn parse_line(line: &str) -> Option<Pane> {
         id: PaneId::parse(id)?,
         session: (*session).to_owned(),
         window_index: window_index.parse().ok()?,
-        window_name: (*window_name).to_owned(),
+        window_name: String::new(),
+        window_named: false,
         pane_index: pane_index.parse().ok()?,
         session_windows: session_windows.parse().ok()?,
         window_id: WindowId::parse(window_id)?,
@@ -124,6 +138,7 @@ pub mod fixture {
             session: "s".to_owned(),
             window_index: window,
             window_name: "zsh".to_owned(),
+            window_named: false,
             pane_index: id,
             session_windows: 1,
             window_id: WindowId(window),
@@ -136,61 +151,4 @@ pub mod fixture {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::fixture::pane;
-    use super::*;
-
-    #[test]
-    fn ids_round_trip() {
-        assert_eq!(
-            PaneId::parse("%12").map(|p| p.to_string()),
-            Some("%12".to_owned())
-        );
-        assert_eq!(
-            WindowId::parse("@3").map(|w| w.to_string()),
-            Some("@3".to_owned())
-        );
-        assert_eq!(PaneId::parse("12"), None);
-    }
-
-    #[test]
-    fn parses_list_panes_output() {
-        let panes = parse(
-            "%1\twork\t2\t0\t@4\t\t1\t0\t1\t3\tvim\n%2\twork\t2\t1\t@4\t1\t0\t1\t1\t3\ta\tb\nbroken",
-        );
-        assert_eq!(panes.len(), 2);
-        assert!(panes.first().is_some_and(|p| p.active
-            && !p.sidebar
-            && p.window_index == 2
-            && p.window_name == "vim"
-            && p.session_windows == 3));
-        assert!(
-            panes
-                .get(1)
-                .is_some_and(|p| p.sidebar && p.last && p.window_name == "a\tb")
-        );
-    }
-
-    #[test]
-    fn focused_prefers_active_then_last() {
-        let sidebar = Pane {
-            sidebar: true,
-            active: true,
-            ..pane(1, 0)
-        };
-        let plain = [sidebar.clone(), pane(2, 0), pane(3, 0)];
-        let with_last = [
-            sidebar,
-            pane(2, 0),
-            Pane {
-                last: true,
-                ..pane(3, 0)
-            },
-        ];
-        assert_eq!(focused(&plain, WindowId(0)).map(|p| p.id), Some(PaneId(2)));
-        assert_eq!(
-            focused(&with_last, WindowId(0)).map(|p| p.id),
-            Some(PaneId(3))
-        );
-    }
-}
+mod tests;
