@@ -79,7 +79,7 @@ tmux が既に割り当てているキー（例: `C-b` は `send-prefix`）を�
 
 `@cts_all_windows on` にすると、tmux のウィンドウをすべて tmux と同じ順に並べます。Claude のいないウィンドウは `番号:名前` の薄い行になり、`Enter` かクリックでそのウィンドウへ移動します。カーソルはこの行にも止まりますが、`n` / `p` と `prefix + C-n` / `prefix + C-p` では飛ばします。どれかのペインで Claude が動いているウィンドウは、Claude の行だけを出します。`link-window` で複数のセッションに入っているウィンドウは、そのうち tmux の順で最後のセッションの下に 1 回だけ出します。Claude の行も同じ扱いです。この設定はサイドバーを開くときに読みます。
 
-色は役割ごとに別の設定で、tmux と同じ書き方で指定します。色名（`black` `red` `green` `yellow` `blue` `magenta` `cyan` `white` と、`brightred` のような `bright` 付き、`default`）、`colour0`〜`colour255`（`color0`〜`color255` も可）、`#rrggbb` のどれかです。未設定や読めない値なら既定の色のままです。サイドバーは開くときに読むので、変えたら開き直してください。
+色は役割ごとに別の設定で、tmux の色の書き方のうち次のものを使えます。色名（`black` `red` `green` `yellow` `blue` `magenta` `cyan` `white` と、`brightred` のような `bright` 付き、`default`）、`colour0`〜`colour255`（`color0`〜`color255` も可）、`#rrggbb` のどれかです。未設定や読めない値なら既定の色のままです。`coral` や `grey50` のような tmux の他の色名も読めないので、`#rrggbb` で書いてください。サイドバーは開くときに読むので、変えたら開き直してください。
 
 | 設定 | 色を付ける箇所 | 既定値 |
 |---|---|---|

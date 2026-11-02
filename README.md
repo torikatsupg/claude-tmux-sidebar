@@ -79,7 +79,7 @@ With `@cts_label window`, each row shows its tmux window as `index:name` instead
 
 With `@cts_all_windows on`, every tmux window is listed in tmux's order. A window without Claude is a dim `index:name` row: `Enter` or a click goes there, and the cursor stops on it, but `n` / `p` and `prefix + C-n` / `prefix + C-p` skip it. A window with Claude in one of its panes shows only the Claude row. A window linked into several sessions (`link-window`) is listed once, under the last of those sessions in tmux's order, as a Claude in it already is. The sidebar reads the option when it opens.
 
-Each color has its own option and takes a tmux color: a name (`black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, their `bright` variants such as `brightred`, or `default`), `colour0`–`colour255` (or `color0`–`color255`), or `#rrggbb`. An unset or unrecognized value keeps the default. The sidebar reads them when it opens, so reopen it after a change.
+Each color has its own option and takes one of these forms of a tmux color: a name (`black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, their `bright` variants such as `brightred`, or `default`), `colour0`–`colour255` (or `color0`–`color255`), or `#rrggbb`. An unset or unrecognized value keeps the default, and that includes tmux's other color names such as `coral` or `grey50`: write those as `#rrggbb`. The sidebar reads them when it opens, so reopen it after a change.
 
 | Option | Colors | Default |
 |---|---|---|
