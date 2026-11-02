@@ -3,6 +3,7 @@
 
 mod effect;
 pub mod headings;
+pub mod indent;
 mod input;
 pub mod label;
 pub mod rows;
@@ -20,14 +21,12 @@ use ratatui::DefaultTerminal;
 use ratatui::crossterm::event::{self, DisableMouseCapture, EnableMouseCapture};
 use ratatui::crossterm::execute;
 
+use self::{effect::Next, indent::Indent, label::Label, theme::Theme};
 use crate::context::{self, Context};
 use crate::i18n::{self, Messages};
 use crate::session::store;
 use crate::session::transcript::cache::Transcripts;
 use crate::tmux::{self, pane::PaneId};
-use effect::Next;
-use label::Label;
-use theme::Theme;
 use update::{Model, Msg};
 
 /// Input wait per step; also the spinner speed.
@@ -49,6 +48,7 @@ struct Env<'a> {
     ctx: &'a Context,
     scope: snapshot::Scope,
     help: bool,
+    indent: Indent,
     theme: Theme,
     messages: &'static Messages,
     /// The spinner runs on the clock, not on the number of events.
@@ -78,6 +78,7 @@ pub fn run(ctx: &Context, mode: Mode) -> io::Result<()> {
             label: Label::from_options(tmux::global_option),
         },
         help: tmux::global_option("@cts_help").as_deref() != Some("off"),
+        indent: Indent::from_options(tmux::global_option),
         theme: Theme::from_options(tmux::global_option),
         messages: i18n::messages(lang.as_deref()),
         started: Instant::now(),
@@ -98,6 +99,7 @@ fn event_loop(terminal: &mut DefaultTerminal, env: &Env<'_>) -> io::Result<()> {
         popup: env.scope.popup,
         help: env.help,
         label: env.scope.label,
+        indent: env.indent,
         theme: env.theme,
         height,
         now: context::now(),

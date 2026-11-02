@@ -57,7 +57,7 @@ main=$(t list-panes -t work:api -F '#{pane_id} #{@cts_sidebar}' | awk '$2 != "1"
 t select-pane -t "$sidebar" # the cursor follows the focused pane until the sidebar has the focus
 t send-keys -t "$sidebar" j # move the cursor off the current session, so both show
 sleep 0.5
-t capture-pane -e -p -t "$sidebar" >"$TMP/sidebar.ansi"
+t capture-pane -e -N -p -t "$sidebar" >"$TMP/sidebar.ansi"
 t capture-pane -e -p -t "$main" >"$TMP/main.ansi"
 printf '│\n%.0s' $(seq "$H") >"$TMP/border.ansi"
 printf '\033[38;5;238m' | cat - "$TMP/border.ansi" >"$TMP/border2.ansi"

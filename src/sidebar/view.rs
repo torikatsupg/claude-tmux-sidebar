@@ -60,7 +60,7 @@ fn help(messages: &Messages, theme: &Theme) -> Line<'static> {
         .iter()
         .enumerate()
         .flat_map(|(i, (key, label))| {
-            let gap = if i == 0 { " " } else { "  " };
+            let gap = if i == 0 { "" } else { "  " };
             [
                 Span::raw(gap),
                 Span::styled(*key, Modifier::BOLD),
@@ -93,7 +93,7 @@ fn title(model: &Model) -> Line<'static> {
             .add_modifier(Modifier::BOLD),
     );
     Line::from(
-        [Span::raw(" "), title, Span::raw(" ")]
+        [title, Span::raw(" ")]
             .into_iter()
             .chain(counts)
             .collect::<Vec<_>>(),
@@ -104,27 +104,48 @@ fn row_line(model: &Model, messages: &Messages, row: &Row, width: usize) -> Line
     let selected = rows::owner(row).is_some_and(|k| model.selection.selected.as_ref() == Some(&k));
     let line = match row {
         Row::Gap => Line::default(),
-        Row::Empty(_) => Line::styled(
-            format!("   {}", messages.none),
-            Style::new()
-                .fg(model.theme.muted)
-                .add_modifier(Modifier::ITALIC),
-        ),
+        Row::Empty(_) => empty(model, messages),
         Row::Heading(name) => heading(name, messages),
         Row::NamedSession { session, window } => {
-            let text = truncate(&format!("{session}/{window}"), width.saturating_sub(1));
-            bold_line(text)
+            bold_line(truncate(&format!("{session}/{window}"), width))
         }
         Row::WindowHeading(pane) => window::heading(model, pane, width),
-        Row::Session(claude) => session::line(model, claude, width),
+        Row::Session(claude) => session::line(model, claude, width, selected),
         Row::Detail(claude) => session::detail(model, claude, width),
-        Row::Window(pane) => window::line(model, pane, width),
+        Row::Window(pane) => window::line(model, pane, width, selected),
     };
-    if selected {
-        highlight(line, width, model.theme.cursor)
-    } else {
-        line
+    match background(model, row, selected) {
+        Some(color) => fill(line, width, color),
+        None => line,
     }
+}
+
+/// The cursor's background, or else the one that marks the rows of the window you are in.
+fn background(model: &Model, row: &Row, selected: bool) -> Option<Color> {
+    let pane = match row {
+        Row::Session(claude) | Row::Detail(claude) => claude.pane.as_ref(),
+        Row::Window(pane) | Row::WindowHeading(pane) => Some(pane),
+        _ => None,
+    };
+    let here = pane.is_some_and(|p| Some(p.window_id) == model.snapshot.window);
+    if selected {
+        Some(model.theme.cursor)
+    } else if here {
+        Some(model.theme.active)
+    } else {
+        None
+    }
+}
+
+/// `none` where a Claude row's name would start.
+fn empty(model: &Model, messages: &Messages) -> Line<'static> {
+    let indent = model.indent.at(usize::from(model.label.tree()));
+    Line::styled(
+        format!("{indent}  {}", messages.none),
+        Style::new()
+            .fg(model.theme.muted)
+            .add_modifier(Modifier::ITALIC),
+    )
 }
 
 fn heading(name: &GroupName, messages: &Messages) -> Line<'static> {
@@ -136,17 +157,17 @@ fn heading(name: &GroupName, messages: &Messages) -> Line<'static> {
 }
 
 fn bold_line(text: String) -> Line<'static> {
-    Line::from(vec![Span::raw(" "), Span::styled(text, Modifier::BOLD)])
+    Line::from(Span::styled(text, Modifier::BOLD))
 }
 
-/// The cursor: a background across the full width, under the row's own colors.
-fn highlight(line: Line<'static>, width: usize, cursor: Color) -> Line<'static> {
+/// A background across the full width, under the row's own colors.
+fn fill(line: Line<'static>, width: usize, color: Color) -> Line<'static> {
     let pad = " ".repeat(width.saturating_sub(line.width()));
     let spans = line
         .spans
         .into_iter()
         .chain([Span::raw(pad)])
-        .map(|span| span.patch_style(Style::new().bg(cursor)))
+        .map(|span| span.patch_style(Style::new().bg(color)))
         .collect::<Vec<_>>();
     Line::from(spans)
 }

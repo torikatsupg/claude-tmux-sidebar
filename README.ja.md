@@ -37,7 +37,7 @@ tmux で Claude Code を何本も並行して動かしていると、どれが�
 | ✓ (水色) | 完了 | ターンが終わり、動いているものが残っていない |
 | ○ (灰) | 待機 | 起動直後、または 60 秒入力がない |
 
-各セッションにはディレクトリと git ブランチを表示し、右側に使用中のツールとその状態になってからの経過時間を表示します。下の行には最後に送ったプロンプトと context window の使用率を表示します（50% から黄色、80% から赤）。ウィンドウ番号（`1:api`）は、その tmux セッションにウィンドウが 2 つ以上あるときだけ付きます。左端のマゼンタのバーは、今いるウィンドウの印です。
+各セッションにはディレクトリと git ブランチを表示し、右側に使用中のツールとその状態になってからの経過時間を表示します。下の行には最後に送ったプロンプトと context window の使用率を表示します（50% から黄色、80% から赤）。ウィンドウ番号（`1:api`）は、その tmux セッションにウィンドウが 2 つ以上あるときだけ付きます。今いるウィンドウの行は、背景を少し明るくして示します。その行にカーソルがあるときは、代わりにウィンドウ番号をアクセントの色で出します。
 
 ## 操作
 
@@ -69,8 +69,10 @@ set -g @cts_help on           # 下端のキー操作ヘルプを表示
 set -g @cts_label auto        # 行の並べ方: auto（セッション > ウィンドウ > Claude）/ dir（平ら）/ window（#I:#W）
 set -g @cts_single_window inline  # auto のとき、セッションに 1 つだけの名前付きウィンドウ: inline / lines
 set -g @cts_all_windows off   # Claude のいないウィンドウも一覧に出す
+set -g @cts_indent 1          # 階層ごとの字下げ（空白の数）: 0〜4
 set -g @cts_hook_index 77     # tmux hook 配列のインデックス（衝突時のみ変更）
 set -g @cts_color_accent '#D97757'  # 色（下の表を参照）
+set -g @cts_color_active colour235  # 今いるウィンドウの行の背景
 set -g @cts_context_windows 'claude-opus-5-5=1000000'  # モデルごとの context window のサイズ
 ```
 
@@ -88,8 +90,9 @@ tmux が既に割り当てているキー（例: `C-b` は `send-prefix`）を�
 
 | 設定 | 色を付ける箇所 | 既定値 |
 |---|---|---|
-| `@cts_color_accent` | タイトルと、今いるウィンドウを示す左端のバー | `magenta` |
+| `@cts_color_accent` | タイトルと、今いるウィンドウのカーソル行にあるウィンドウ番号 | `magenta` |
 | `@cts_color_cursor` | カーソル行の背景 | `colour237` |
+| `@cts_color_active` | 今いるウィンドウの行の背景 | `colour235` |
 | `@cts_color_muted` | 補足の文字（ブランチ、プロンプト、ヘルプの説明） | `colour245` |
 | `@cts_color_dim` | 薄い文字（区切り線、待機の印） | `brightblack` |
 | `@cts_color_waiting` | 承認待ちの印 | `yellow` |

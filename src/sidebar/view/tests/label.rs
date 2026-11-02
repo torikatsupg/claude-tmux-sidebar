@@ -19,11 +19,11 @@ fn the_window_label_replaces_the_directory_and_branch() {
     let screen = screen(&window_model("editor"), &EN);
     assert_eq!(
         screen.get(3).map(String::as_str),
-        Some(" ✓ 2:editor                    2s ")
+        Some("✓ 2:editor                     2s ")
     );
     assert_eq!(
         screen.get(4).map(String::as_str),
-        Some(" └ fix the failing sidebar test … ")
+        Some("└ fix the failing sidebar test p… ")
     );
 }
 
@@ -31,7 +31,7 @@ fn the_window_label_replaces_the_directory_and_branch() {
 fn a_narrow_row_cuts_the_window_label() {
     let model = window_model("a long window name");
     let row = lines(&model, &EN, 16, model.height).get(3).map(text);
-    assert_eq!(row.as_deref(), Some(" ✓ 2:a long… 2s "));
+    assert_eq!(row.as_deref(), Some("✓ 2:a long … 2s "));
 }
 
 fn auto_model(named: bool, windows: u32, single: SingleWindow) -> Model {
@@ -58,19 +58,19 @@ fn auto_model(named: bool, windows: u32, single: SingleWindow) -> Model {
 #[test]
 fn a_named_window_is_a_heading_over_indented_rows() {
     let screen = screen(&auto_model(true, 2, SingleWindow::Inline), &EN);
-    assert_eq!(screen.get(3).map(String::as_str), Some("   2:mywork"));
+    assert_eq!(screen.get(3).map(String::as_str), Some(" 2:mywork"));
     let row = screen.get(4).cloned().unwrap_or_default();
-    assert!(row.starts_with("     ✓ ") && !row.contains("2:"), "{row}");
+    assert!(row.starts_with("  ✓ ") && !row.contains("2:"), "{row}");
     assert!(row.contains("feat"), "the branch stays: {row}");
     let detail = screen.get(5).cloned().unwrap_or_default();
-    assert!(detail.starts_with("     └ "), "{detail}");
+    assert!(detail.starts_with("  └ "), "{detail}");
 }
 
 #[test]
 fn a_window_tmux_named_is_a_heading_with_its_number() {
     let screen = screen(&auto_model(false, 2, SingleWindow::Inline), &EN);
-    assert_eq!(screen.get(3).map(String::as_str), Some("   2"));
-    assert!(screen.get(4).is_some_and(|row| row.starts_with("     ✓ ")));
+    assert_eq!(screen.get(3).map(String::as_str), Some(" 2"));
+    assert!(screen.get(4).is_some_and(|row| row.starts_with("  ✓ ")));
 }
 
 #[test]
@@ -85,21 +85,21 @@ fn indented_rows_keep_the_width() {
 #[test]
 fn a_named_window_alone_joins_the_session_line() {
     let screen = screen(&auto_model(true, 1, SingleWindow::Inline), &EN);
-    assert_eq!(screen.get(2).map(String::as_str), Some(" work/mywork"));
-    assert!(screen.get(3).is_some_and(|row| row.starts_with("   ✓ ")));
+    assert_eq!(screen.get(2).map(String::as_str), Some("work/mywork"));
+    assert!(screen.get(3).is_some_and(|row| row.starts_with(" ✓ ")));
 }
 
 #[test]
 fn a_window_alone_without_a_name_puts_its_rows_under_the_session() {
     let screen = screen(&auto_model(false, 1, SingleWindow::Inline), &EN);
-    assert_eq!(screen.get(2).map(String::as_str), Some(" work"));
-    assert!(screen.get(3).is_some_and(|row| row.starts_with("   ✓ ")));
+    assert_eq!(screen.get(2).map(String::as_str), Some("work"));
+    assert!(screen.get(3).is_some_and(|row| row.starts_with(" ✓ ")));
 }
 
 #[test]
 fn the_lines_option_gives_a_named_window_alone_its_own_heading() {
     let screen = screen(&auto_model(true, 1, SingleWindow::Lines), &EN);
-    assert_eq!(screen.get(2).map(String::as_str), Some(" work"));
-    assert_eq!(screen.get(3).map(String::as_str), Some("   2:mywork"));
-    assert!(screen.get(4).is_some_and(|row| row.starts_with("     ✓ ")));
+    assert_eq!(screen.get(2).map(String::as_str), Some("work"));
+    assert_eq!(screen.get(3).map(String::as_str), Some(" 2:mywork"));
+    assert!(screen.get(4).is_some_and(|row| row.starts_with("  ✓ ")));
 }

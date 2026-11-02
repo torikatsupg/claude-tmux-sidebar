@@ -26,22 +26,13 @@ fn a_window_without_claude_is_a_quiet_index_and_name() {
     let model = window_model(false);
     let lines = lines(&model, &EN, WIDTH, model.height);
     let row = lines.get(3).cloned().unwrap_or_default();
-    assert_eq!(text(&row), " · 3:zsh");
+    assert_eq!(text(&row), "· 3:zsh");
     let theme = Theme::DEFAULT;
     assert!(
         row.spans
             .iter()
             .filter(|s| !s.content.trim().is_empty())
             .all(|s| [Some(theme.dim), Some(theme.muted)].contains(&s.style.fg))
-    );
-}
-
-#[test]
-fn the_window_you_are_in_is_marked() {
-    let model = window_model(true);
-    assert_eq!(
-        screen(&model, &EN).get(3).map(String::as_str),
-        Some("▌· 3:zsh")
     );
 }
 
@@ -79,7 +70,7 @@ fn scrolled_model() -> Model {
 fn the_list_scrolls_to_keep_the_cursor_on_screen() {
     let screen = screen(&scrolled_model(), &EN);
     assert_eq!(screen.len(), 6);
-    assert_eq!(screen.get(4).map(|s| s.trim_end()), Some(" · 9:w9"));
+    assert_eq!(screen.get(4).map(|s| s.trim_end()), Some("· 9:w9"));
     assert!(screen.get(5).is_some_and(|s| s.contains("jump")));
 }
 
@@ -92,7 +83,7 @@ fn in_the_tree_a_window_without_claude_sits_at_the_window_level() {
     };
     let lines = lines(&model, &EN, WIDTH, model.height);
     let row = lines.get(3).cloned().unwrap_or_default();
-    assert_eq!(text(&row), "   3:zsh");
+    assert_eq!(text(&row), " 3:zsh");
     assert!(
         row.spans
             .iter()

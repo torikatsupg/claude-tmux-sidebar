@@ -81,3 +81,11 @@ fn set_options_override_their_role_and_invalid_ones_keep_the_default() {
     };
     assert_eq!(theme, expected);
 }
+
+#[test]
+fn the_active_color_is_read_from_its_option() {
+    let theme =
+        Theme::from_options(|name| (name == "@cts_color_active").then(|| "colour240".to_owned()));
+    assert_eq!(theme.active, Color::Indexed(240));
+    assert_eq!(Theme::default().active, Color::Indexed(235));
+}
