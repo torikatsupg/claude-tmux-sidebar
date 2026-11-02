@@ -102,7 +102,9 @@ pub fn update(model: Model, msg: Msg) -> (Model, Vec<Effect>) {
 }
 
 fn clicked(model: Model, y: u16) -> (Model, Vec<Effect>) {
-    match rows::at(&model.snapshot.rows, model.list_end(model.height), y) {
+    let end = model.list_end(model.height);
+    let selected = model.selection.selected.as_ref();
+    match rows::at(&model.snapshot.rows, selected, end, y) {
         Some(key) => activate(select(model, Some(key))),
         None => (model, vec![]),
     }

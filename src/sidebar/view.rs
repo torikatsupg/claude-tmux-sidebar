@@ -38,7 +38,7 @@ pub fn lines(model: &Model, messages: &Messages, width: u16, height: u16) -> Vec
             theme.muted,
         )]
     } else {
-        rows::placed(&model.snapshot.rows, end)
+        rows::placed(&model.snapshot.rows, model.selection.selected.as_ref(), end)
             .map(|(_, row)| row_line(model, messages, row, width))
             .collect()
     };

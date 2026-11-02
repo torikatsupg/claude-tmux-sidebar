@@ -11,6 +11,10 @@ All notable changes to this project are documented here. The format follows [Kee
 - The `@cts_label` option chooses what each row names: `dir` (the default) shows the directory and branch as before, and `window` shows the tmux window as `#I:#W` (index and name), following a renamed window on the next refresh (#69).
 - The `@cts_all_windows` option lists every tmux window when set to `on`: a window without Claude shows as a dim `#I:#W` row that `Enter` and a click go to, and that `n` / `p` skip (#68). A window linked into several sessions is listed once. Unset or `off` keeps the list as before.
 
+### Fixed
+
+- The list scrolls to keep the cursor on screen when its rows do not fit the pane; before, the cursor could move off the bottom and rows there could not be seen or clicked (#78).
+
 ## [0.7.5] - 2026-10-28
 
 ### Fixed
