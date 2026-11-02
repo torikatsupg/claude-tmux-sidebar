@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-02
+
 ### Changed
 
 - The window you are in is marked by the `@cts_color_active` background (default `colour235`) on its rows, instead of the bar in the left column. Rows now start at the left edge, one column wider (#108).
@@ -177,7 +179,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `install.sh` for manual setups, with `--hooks-only` and `--uninstall`.
 - Options: `@cts_width`, `@cts_toggle_key` (several keys allowed), `@cts_popup_key`, `@cts_next_key`, `@cts_prev_key`, `@cts_default`, `@cts_lang` (`en` / `ja`), `@cts_hook_index`.
 
-[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.8.0...v0.9.0
