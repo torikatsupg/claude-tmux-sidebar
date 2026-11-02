@@ -17,6 +17,7 @@ internal:
   sidebar                    the sidebar pane itself
   popup-ui [pane]            the list inside the popup
   hook                       Claude Code hook (payload on stdin)
+  statusline                 records the context window size (status line input on stdin)
 
   --version";
 
@@ -48,6 +49,7 @@ pub enum Command {
         origin: Option<PaneId>,
     },
     Hook,
+    Statusline,
     Version,
 }
 
@@ -73,6 +75,7 @@ pub fn parse(args: &[String]) -> Option<Command> {
         "sidebar" => Command::Sidebar,
         "popup-ui" => Command::PopupUi { origin: pane(1) },
         "hook" => Command::Hook,
+        "statusline" => Command::Statusline,
         "--version" | "-V" => Command::Version,
         _ => return None,
     })

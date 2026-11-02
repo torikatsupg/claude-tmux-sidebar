@@ -34,7 +34,7 @@ fn handle(ctx: &Context, input: &str) -> io::Result<()> {
     match transition::next(&Event::of(&payload), prev.as_ref()) {
         Outcome::Ignore => Ok(()),
         Outcome::Remove => {
-            store::remove(&store::path(&ctx.state_dir, &payload.session_id));
+            store::remove_session(&store::path(&ctx.state_dir, &payload.session_id));
             Ok(())
         }
         Outcome::Update(change) => {

@@ -1,5 +1,5 @@
 //! How full a model's context window is: the size set for it in `@cts_context_windows`, otherwise a
-//! guess from its name and the token count.
+//! guess from its name and the token count. A size the status line reported goes before both.
 
 use std::collections::HashMap;
 
@@ -29,9 +29,14 @@ impl ContextWindows {
             .get(model)
             .copied()
             .unwrap_or_else(|| guess(tokens, model));
-        let share = tokens.saturating_mul(100) / window;
-        u8::try_from(share.min(100)).unwrap_or(100)
+        share(tokens, window)
     }
+}
+
+/// `tokens` as a share of a `window` of known, positive size, capped at 100.
+pub fn share(tokens: u64, window: u64) -> u8 {
+    let share = tokens.saturating_mul(100) / window;
+    u8::try_from(share.min(100)).unwrap_or(100)
 }
 
 fn pair(text: &str) -> Option<(String, u64)> {

@@ -2,6 +2,7 @@
 
 pub mod context_window;
 pub mod live;
+pub mod statusline;
 pub mod store;
 pub mod transcript;
 
@@ -68,6 +69,9 @@ pub struct Record {
     /// The context usage a hook before 0.7.4 wrote; used only while there is no `transcript`.
     #[serde(default, skip_serializing)]
     pub context: Option<u8>,
+    /// The context window size from the status line; kept in its own file, see [`store::write_window`].
+    #[serde(skip)]
+    pub context_window: Option<u64>,
 }
 
 impl Record {
