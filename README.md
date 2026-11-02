@@ -66,7 +66,7 @@ set -g @cts_prev_key C-p
 set -g @cts_default off       # open the sidebar when tmux starts
 set -g @cts_lang en           # en / ja
 set -g @cts_help on           # show the key help at the bottom
-set -g @cts_label dir         # row label: dir (directory and branch) / window (#I:#W) / auto
+set -g @cts_label auto        # rows: auto (sessions > windows > Claude) / dir (flat) / window (#I:#W)
 set -g @cts_single_window inline  # with auto, a named window alone in its session: inline / lines
 set -g @cts_all_windows off   # also list windows without Claude
 set -g @cts_hook_index 77     # tmux hook array index (change only on conflicts)
@@ -78,7 +78,7 @@ Avoid keys tmux already binds (e.g. `C-b` is `send-prefix`): the plugin's bindin
 
 With `@cts_label window`, each row shows its tmux window as `index:name` instead of the directory and branch, and follows a renamed window on the next refresh. Sessions outside tmux keep the directory.
 
-With `@cts_label auto`, the list is a tree of sessions, windows and Claude rows, each row one level under its parent and showing its directory and branch. In a session with several windows, each window is a heading: `index:name` for a window you named yourself, and just `index` for any other, since tmux names a window after what runs in it, which for Claude Code is its version number. A window counts as named when its `automatic-rename` is off, which `rename-window` and `new-window -n` do for you.
+By default (`@cts_label auto`), the list is a tree of sessions, windows and Claude rows, each row one level under its parent and showing its directory and branch. In a session with several windows, each window is a heading: `index:name` for a window you named yourself, and just `index` for any other, since tmux names a window after what runs in it, which for Claude Code is its version number. A window counts as named when its `automatic-rename` is off, which `rename-window` and `new-window -n` do for you. Set `@cts_label dir` for the flat list of earlier versions, with each row showing its window number when the session has several.
 
 A session with a single window needs no window heading: its rows go under the session, which reads `session/name` when you named the window. Set `@cts_single_window lines` to give a named window its own heading instead.
 

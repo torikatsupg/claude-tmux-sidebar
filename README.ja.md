@@ -66,7 +66,7 @@ set -g @cts_prev_key C-p
 set -g @cts_default off       # tmux 起動時に開いておくか
 set -g @cts_lang ja           # en / ja
 set -g @cts_help on           # 下端のキー操作ヘルプを表示
-set -g @cts_label dir         # 行に出す名前: dir（ディレクトリとブランチ）/ window（#I:#W）/ auto
+set -g @cts_label auto        # 行の並べ方: auto（セッション > ウィンドウ > Claude）/ dir（平ら）/ window（#I:#W）
 set -g @cts_single_window inline  # auto のとき、セッションに 1 つだけの名前付きウィンドウ: inline / lines
 set -g @cts_all_windows off   # Claude のいないウィンドウも一覧に出す
 set -g @cts_hook_index 77     # tmux hook 配列のインデックス（衝突時のみ変更）
@@ -78,7 +78,7 @@ tmux が既に割り当てているキー（例: `C-b` は `send-prefix`）を�
 
 `@cts_label window` にすると、各行にはディレクトリとブランチの代わりに tmux のウィンドウを `番号:名前` で出します。ウィンドウ名を変えれば、次の更新で新しい名前になります。tmux の外で動いているセッションはディレクトリのままです。
 
-`@cts_label auto` にすると、一覧はセッション、ウィンドウ、Claude の行の階層になり、各行は親の 1 段下にディレクトリとブランチを出します。複数のウィンドウがあるセッションでは、各ウィンドウが見出しになります。自分で名前を付けたウィンドウは `番号:名前`、それ以外は `番号` だけです。tmux はウィンドウに実行中のコマンドの名前を付けるので、Claude Code のウィンドウはバージョン番号になるためです。`automatic-rename` が off のウィンドウを、名前を付けたものとして扱います。`rename-window` や `new-window -n` で名前を付けると off になります。
+既定（`@cts_label auto`）では、一覧はセッション、ウィンドウ、Claude の行の階層になり、各行は親の 1 段下にディレクトリとブランチを出します。複数のウィンドウがあるセッションでは、各ウィンドウが見出しになります。自分で名前を付けたウィンドウは `番号:名前`、それ以外は `番号` だけです。tmux はウィンドウに実行中のコマンドの名前を付けるので、Claude Code のウィンドウはバージョン番号になるためです。`automatic-rename` が off のウィンドウを、名前を付けたものとして扱います。`rename-window` や `new-window -n` で名前を付けると off になります。以前の平らな一覧に戻すには `@cts_label dir` にしてください。複数ウィンドウのセッションでは、各行にウィンドウ番号が付きます。
 
 ウィンドウが 1 つだけのセッションでは、ウィンドウの見出しを出さず、行をセッションの下に置きます。ウィンドウに名前を付けていれば、セッションの見出しは `セッション/名前` になります。`@cts_single_window lines` にすると、名前付きのウィンドウには別の行の見出しを付けます。
 
