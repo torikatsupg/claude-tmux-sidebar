@@ -96,6 +96,7 @@ fn windows_without_claude_sit_in_tmux_order_among_sessions() {
             Row::Heading(_),
             Row::Window(w1),
             Row::Session(_),
+            Row::Detail(_),
             Row::Window(w3)
         ] if w1.window_index == 1 && w3.window_index == 3
     ));

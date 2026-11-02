@@ -125,7 +125,7 @@ fn clicking_a_row_selects_and_jumps() {
     let (model, effects) = update(
         model,
         Msg::Clicked {
-            y: rows::FIRST_ROW + 2,
+            y: rows::FIRST_ROW + 3,
         },
     );
     assert_eq!(selected(&model), Some(&claude_key("b")));

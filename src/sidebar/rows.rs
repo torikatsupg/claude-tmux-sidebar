@@ -79,13 +79,9 @@ fn group_body(group: &Group, windows: &[Pane]) -> Vec<Row> {
         .collect()
 }
 
-/// A Claude session, followed by its detail line when there is anything to show.
+/// A Claude session and its detail line, so that every session takes two lines.
 fn session_rows(claude: &Claude) -> Vec<Row> {
-    let detail = !claude.record.prompt.is_empty() || claude.has_context();
-    [Row::Session(claude.clone())]
-        .into_iter()
-        .chain(detail.then(|| Row::Detail(claude.clone())))
-        .collect()
+    vec![Row::Session(claude.clone()), Row::Detail(claude.clone())]
 }
 
 /// The key of a selectable row: the cursor stops on Claude sessions, windows without Claude, and the

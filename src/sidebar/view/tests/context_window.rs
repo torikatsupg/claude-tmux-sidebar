@@ -10,3 +10,21 @@ fn the_context_uses_the_configured_window_size() {
         Some(" └ fix the failing sidebar te… 8% ")
     );
 }
+
+#[test]
+fn a_session_before_its_first_reply_has_a_detail_line_at_zero() {
+    let claude = Claude {
+        record: Record {
+            transcript: "/t".to_owned(),
+            ..record(Status::Idle, "")
+        },
+        pane: None,
+        latest: None,
+    };
+    let screen = screen(&model_of(claude, false), &EN);
+    let detail = screen.get(4).cloned().unwrap_or_default();
+    assert!(
+        detail.starts_with(" └ ") && detail.ends_with(" 0% "),
+        "{detail}"
+    );
+}

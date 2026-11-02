@@ -30,7 +30,8 @@ impl Claude {
         }
     }
 
-    /// How full the context window is, in percent.
+    /// How full the context window is, in percent: 0 before the first reply, and unknown right after a
+    /// compaction until the next one.
     pub fn context(&self, windows: &ContextWindows) -> Option<u8> {
         match &self.latest {
             Some(latest) => latest
@@ -41,13 +42,8 @@ impl Claude {
                     None => windows.percent(u.tokens, &u.model),
                 }),
             None if self.record.transcript.is_empty() => self.record.context,
-            None => None,
+            None => Some(0),
         }
-    }
-
-    /// Whether [`context`](Self::context) is known, whatever the window sizes.
-    pub fn has_context(&self) -> bool {
-        self.context(&ContextWindows::default()).is_some()
     }
 }
 
