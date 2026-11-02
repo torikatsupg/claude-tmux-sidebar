@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-02
+
 ### Added
 
 - `@cts_label auto` shows a window named by hand as `#I:#W` and keeps the directory and branch for any other, since tmux's automatic name for a Claude Code window is its version number (#89).
@@ -158,7 +160,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `install.sh` for manual setups, with `--hooks-only` and `--uninstall`.
 - Options: `@cts_width`, `@cts_toggle_key` (several keys allowed), `@cts_popup_key`, `@cts_next_key`, `@cts_prev_key`, `@cts_default`, `@cts_lang` (`en` / `ja`), `@cts_hook_index`.
 
-[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.5...v0.8.0
 [0.7.5]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.7.4...v0.7.5
