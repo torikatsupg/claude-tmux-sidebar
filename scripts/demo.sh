@@ -10,7 +10,7 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SELF="$REPO/scripts/demo.sh"
 BIN="$REPO/bin/claude-tmux-sidebar"
 SOCKET_NAME=cts-gif
-SIDEBAR_W=36
+SIDEBAR_W=40
 t() { tmux -L "$SOCKET_NAME" -f /dev/null "$@"; }
 
 # --- record: build, run vhs, clean up -------------------------------------------------------------------
