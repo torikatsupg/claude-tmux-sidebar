@@ -127,14 +127,32 @@ pub fn key_for_pane(rows: &[Row], pane: &Pane) -> RowKey {
         .unwrap_or_else(|| RowKey::Session(pane.session.clone()))
 }
 
-/// Rows with the screen line they are drawn on, above screen line `end`.
-pub fn placed(rows: &[Row], end: u16) -> impl Iterator<Item = (u16, &Row)> {
-    (FIRST_ROW..end).zip(rows)
+/// How many rows scroll off the top to keep `selected` above screen line `end`, with its detail line
+/// when there is room. Derived on every use, so drawing and clicks always agree.
+pub fn offset(rows: &[Row], selected: Option<&RowKey>, end: u16) -> usize {
+    let capacity = usize::from(end.saturating_sub(FIRST_ROW));
+    let lines = || {
+        rows.iter()
+            .positions(|row| selected.is_some() && owner(row).as_ref() == selected)
+    };
+    match (lines().next(), lines().next_back()) {
+        (Some(first), Some(last)) => (last + 1).saturating_sub(capacity).min(first),
+        _ => 0,
+    }
+}
+
+/// The rows that fit, with the screen line they are drawn on, above screen line `end`.
+pub fn placed<'a>(
+    rows: &'a [Row],
+    selected: Option<&RowKey>,
+    end: u16,
+) -> impl Iterator<Item = (u16, &'a Row)> {
+    (FIRST_ROW..end).zip(rows.iter().skip(offset(rows, selected, end)))
 }
 
 /// The selectable row drawn on screen line `y`.
-pub fn at(rows: &[Row], end: u16, y: u16) -> Option<RowKey> {
-    placed(rows, end)
+pub fn at(rows: &[Row], selected: Option<&RowKey>, end: u16, y: u16) -> Option<RowKey> {
+    placed(rows, selected, end)
         .find(|&(line, _)| line == y)
         .and_then(|(_, row)| owner(row))
 }

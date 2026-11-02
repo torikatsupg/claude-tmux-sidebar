@@ -44,3 +44,41 @@ fn the_window_you_are_in_is_marked() {
         Some("▌· 3:zsh")
     );
 }
+
+/// Ten windows in a pane of six lines, with the cursor on the last one.
+fn scrolled_model() -> Model {
+    let windows: Vec<Pane> = (0..10)
+        .map(|i| Pane {
+            session: "s".to_owned(),
+            window_name: format!("w{i}"),
+            ..pane(i, i)
+        })
+        .collect();
+    let groups = [Group {
+        name: GroupName::Session("s".to_owned()),
+        claudes: vec![],
+    }];
+    let rows = rows::with_windows(&groups, &windows);
+    let selected = rows::keys(&rows).last().cloned();
+    Model {
+        snapshot: Snapshot {
+            rows,
+            ..Snapshot::default()
+        },
+        selection: Selection {
+            selected,
+            ..Selection::default()
+        },
+        height: 6,
+        help: true,
+        ..Model::default()
+    }
+}
+
+#[test]
+fn the_list_scrolls_to_keep_the_cursor_on_screen() {
+    let screen = screen(&scrolled_model(), &EN);
+    assert_eq!(screen.len(), 6);
+    assert_eq!(screen.get(4).map(|s| s.trim_end()), Some(" · 9:w9"));
+    assert!(screen.get(5).is_some_and(|s| s.contains("jump")));
+}
