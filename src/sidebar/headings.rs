@@ -1,12 +1,12 @@
-//! The headings of windows named by hand (`@cts_label auto`), added to the finished list.
+//! The window headings of the tree (`@cts_label auto`), added to the finished list.
 
 use super::label::Label;
 use super::rows::Row;
 use crate::listing::GroupName;
 use crate::tmux::pane::{Pane, WindowId};
 
-/// `rows` with a heading above the Claude rows of each such window, or the window's name on the line of
-/// its tmux session when the label says so.
+/// `rows` with a heading above the Claude rows of each window the label asks one for, and the name of a
+/// named window alone in its session on the session's line when the label says so.
 pub fn with_headings(rows: &[Row], label: Label) -> Vec<Row> {
     let inline = |name: &str| {
         rows.iter()
@@ -97,7 +97,7 @@ mod tests {
         ]);
         assert_eq!(
             shape(&with_headings(&rows, AUTO)),
-            ["session", "window w0", "c1", "c2", "c3"]
+            ["session", "window w0", "c1", "c2", "window w1", "c3"]
         );
     }
 

@@ -12,7 +12,8 @@ pub enum Label {
     Dir,
     /// The tmux window as `#I:#W`.
     Window,
-    /// The directory and the git branch, under a heading for a window named by hand.
+    /// The directory and the git branch, in a tree of sessions, windows and panes that shows only the
+    /// window names set by hand.
     Auto(SingleWindow),
 }
 
@@ -44,14 +45,20 @@ impl Label {
         }
     }
 
-    /// The pane's window gets a heading line, and its Claude rows go under it.
+    /// The pane's window gets a heading line, and its Claude rows go under it: every window of a session
+    /// with several, and with `lines` a named one alone in its session.
     pub fn window_heading(self, pane: &Pane) -> bool {
         match self {
             Self::Auto(single) => {
-                pane.window_named && (pane.session_windows > 1 || single == SingleWindow::Lines)
+                pane.session_windows > 1 || (single == SingleWindow::Lines && pane.window_named)
             }
             Self::Dir | Self::Window => false,
         }
+    }
+
+    /// The rows sit in a tree: each one level under its session or window.
+    pub fn tree(self) -> bool {
+        matches!(self, Self::Auto(_))
     }
 
     /// The pane's window joins the line of its tmux session.
@@ -86,9 +93,13 @@ mod tests {
     }
 
     #[test]
-    fn a_named_window_among_others_gets_its_own_heading() {
+    fn every_window_among_others_gets_its_own_heading() {
+        let automatic = Pane {
+            window_named: false,
+            ..named(2)
+        };
         for label in [SingleWindow::Inline, SingleWindow::Lines].map(Label::Auto) {
-            assert!(label.window_heading(&named(2)));
+            assert!(label.window_heading(&named(2)) && label.window_heading(&automatic));
             assert!(!label.inline(&named(2)));
         }
     }
@@ -102,13 +113,20 @@ mod tests {
     }
 
     #[test]
-    fn only_a_named_window_counts() {
+    fn a_window_alone_without_a_name_gets_no_heading() {
         let label = Label::Auto(SingleWindow::Inline);
         let automatic = Pane {
             window_named: false,
             ..named(2)
         };
-        assert!(!label.window_heading(&automatic) && !label.inline(&automatic));
+        let alone = Pane {
+            session_windows: 1,
+            ..automatic
+        };
+        assert!(!label.window_heading(&alone) && !label.inline(&alone));
+        let lines = Label::Auto(SingleWindow::Lines);
+        assert!(!lines.window_heading(&alone));
         assert!(!Label::Dir.window_heading(&named(2)) && !Label::Window.inline(&named(1)));
+        assert!(label.tree() && !Label::Dir.tree() && !Label::Window.tree());
     }
 }

@@ -18,7 +18,7 @@ pub(super) fn label(model: &Model, claude: &Claude, room: usize) -> (String, Str
     match model.label {
         Label::Window => (truncate(&window(claude), room), String::new()),
         Label::Dir | Label::Auto(_) => {
-            let numbered = !under_heading(model, claude);
+            let numbered = !model.label.tree();
             let name = truncate(&name(claude, numbered), room);
             let branch = branch(claude.branch(), room.saturating_sub(text::width(&name)));
             (name, branch)

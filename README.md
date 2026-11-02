@@ -78,9 +78,9 @@ Avoid keys tmux already binds (e.g. `C-b` is `send-prefix`): the plugin's bindin
 
 With `@cts_label window`, each row shows its tmux window as `index:name` instead of the directory and branch, and follows a renamed window on the next refresh. Sessions outside tmux keep the directory.
 
-With `@cts_label auto`, a window you named yourself gets a heading with its `index:name`, and its Claude rows go under it with their directory and branch. Other windows look as with `dir`. tmux names a window after what runs in it, which for Claude Code is its version number, so only names you chose are shown. A window counts as named when its `automatic-rename` is off, which `rename-window` and `new-window -n` do for you.
+With `@cts_label auto`, the list is a tree of sessions, windows and Claude rows, each row one level under its parent and showing its directory and branch. In a session with several windows, each window is a heading: `index:name` for a window you named yourself, and just `index` for any other, since tmux names a window after what runs in it, which for Claude Code is its version number. A window counts as named when its `automatic-rename` is off, which `rename-window` and `new-window -n` do for you.
 
-A named window alone in its tmux session joins the session's line as `session/name`. Set `@cts_single_window lines` to give it its own heading instead.
+A session with a single window needs no window heading: its rows go under the session, which reads `session/name` when you named the window. Set `@cts_single_window lines` to give a named window its own heading instead.
 
 With `@cts_all_windows on`, every tmux window is listed in tmux's order. A window without Claude is a dim `index:name` row: `Enter` or a click goes there, and the cursor stops on it, but `n` / `p` and `prefix + C-n` / `prefix + C-p` skip it. A window with Claude in one of its panes shows only the Claude row. A window linked into several sessions (`link-window`) is listed once, under the last of those sessions in tmux's order, as a Claude in it already is. The sidebar reads the option when it opens.
 

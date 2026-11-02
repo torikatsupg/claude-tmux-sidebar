@@ -17,7 +17,8 @@ const MIN_NAME_WIDTH: usize = 12;
 /// Context usage from this percent on is a warning, and from the next one on an alarm.
 const CONTEXT_WARN: u8 = 50;
 const CONTEXT_ALARM: u8 = 80;
-const NESTED: &str = "    ";
+const UNDER_SESSION: &str = "  ";
+const UNDER_WINDOW: &str = "    ";
 
 pub fn look(theme: &Theme, status: Status) -> (&'static str, Color) {
     match status {
@@ -94,10 +95,12 @@ fn context_color(theme: &Theme, percent: u8) -> Color {
     }
 }
 
-/// The rows under a window heading sit further in.
+/// In a tree, a row sits one level under its window heading, or under its session.
 fn indent(model: &Model, claude: &Claude) -> &'static str {
     if name::under_heading(model, claude) {
-        NESTED
+        UNDER_WINDOW
+    } else if model.label.tree() {
+        UNDER_SESSION
     } else {
         ""
     }

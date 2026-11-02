@@ -67,6 +67,13 @@ fn a_named_window_is_a_heading_over_indented_rows() {
 }
 
 #[test]
+fn a_window_tmux_named_is_a_heading_with_its_number() {
+    let screen = screen(&auto_model(false, 2, SingleWindow::Inline), &EN);
+    assert_eq!(screen.get(3).map(String::as_str), Some("   2"));
+    assert!(screen.get(4).is_some_and(|row| row.starts_with("     ✓ ")));
+}
+
+#[test]
 fn indented_rows_keep_the_width() {
     let model = auto_model(true, 2, SingleWindow::Inline);
     let width = usize::from(WIDTH);
@@ -79,7 +86,14 @@ fn indented_rows_keep_the_width() {
 fn a_named_window_alone_joins_the_session_line() {
     let screen = screen(&auto_model(true, 1, SingleWindow::Inline), &EN);
     assert_eq!(screen.get(2).map(String::as_str), Some(" work/mywork"));
-    assert!(screen.get(3).is_some_and(|row| row.starts_with(" ✓ ")));
+    assert!(screen.get(3).is_some_and(|row| row.starts_with("   ✓ ")));
+}
+
+#[test]
+fn a_window_alone_without_a_name_puts_its_rows_under_the_session() {
+    let screen = screen(&auto_model(false, 1, SingleWindow::Inline), &EN);
+    assert_eq!(screen.get(2).map(String::as_str), Some(" work"));
+    assert!(screen.get(3).is_some_and(|row| row.starts_with("   ✓ ")));
 }
 
 #[test]
@@ -87,14 +101,5 @@ fn the_lines_option_gives_a_named_window_alone_its_own_heading() {
     let screen = screen(&auto_model(true, 1, SingleWindow::Lines), &EN);
     assert_eq!(screen.get(2).map(String::as_str), Some(" work"));
     assert_eq!(screen.get(3).map(String::as_str), Some("   2:mywork"));
-}
-
-#[test]
-fn an_automatic_window_name_looks_like_dir() {
-    let automatic = auto_model(false, 2, SingleWindow::Inline);
-    let dir = Model {
-        label: Label::Dir,
-        ..automatic.clone()
-    };
-    assert_eq!(screen(&automatic, &EN), screen(&dir, &EN));
+    assert!(screen.get(4).is_some_and(|row| row.starts_with("     ✓ ")));
 }
