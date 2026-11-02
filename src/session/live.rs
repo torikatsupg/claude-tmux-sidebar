@@ -5,7 +5,7 @@ use std::path::Path;
 
 use itertools::Itertools;
 
-use super::context_window::ContextWindows;
+use super::context_window::{self, ContextWindows};
 use super::transcript::Latest;
 use super::{Record, store};
 use crate::process;
@@ -36,7 +36,10 @@ impl Claude {
             Some(latest) => latest
                 .usage
                 .as_ref()
-                .map(|u| windows.percent(u.tokens, &u.model)),
+                .map(|u| match self.record.context_window {
+                    Some(window) => context_window::share(u.tokens, window),
+                    None => windows.percent(u.tokens, &u.model),
+                }),
             None if self.record.transcript.is_empty() => self.record.context,
             None => None,
         }
@@ -107,6 +110,7 @@ pub fn load(dir: &Path, socket: &str, panes: &[Pane]) -> Vec<Claude> {
         socket,
         panes: &panes,
     };
+    store::sweep_windows(dir);
     let kept = store::read_all(dir)
         .into_iter()
         .filter_map(|(path, record)| keep_or_remove(&path, record, &server))
@@ -119,7 +123,7 @@ fn keep_or_remove(path: &Path, record: Record, server: &Server<'_>) -> Option<Cl
     match dispose(record, alive, server) {
         Disposition::Keep(claude) => Some(*claude),
         Disposition::Remove => {
-            store::remove(path);
+            store::remove_session(path);
             None
         }
         Disposition::Skip => None,

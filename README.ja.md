@@ -95,6 +95,15 @@ tmux が既に割り当てているキー（例: `C-b` は `send-prefix`）を�
 
 `@cts_context_windows` には `モデル=トークン数` の組を空白区切りで書きます。モデルは Claude Code が transcript に書く ID（`claude-opus-5-5` など）です。設定しないとき、または設定にないモデルは、サイズを推測します。名前が `[1m]` で終わるモデル、Fable と Mythos のモデル、200k トークンを超えて使っているときは 1M、それ以外は 200k です。モデルのサイズは、`claude -p --model <モデル> --output-format json "hi"` を実行して `modelUsage.<モデル ID>.contextWindow` を見れば分かります。
 
+サイズを書く代わりに、Claude Code に教えてもらうこともできます。[status line](https://code.claude.com/docs/en/statusline) の入力にはセッションごとの実際のサイズが入っていて、これは `@cts_context_windows` と推測より優先されます。status line のスクリプトで入力を読んだあとに 1 行足して、Claude を起動し直してください。
+
+```bash
+input=$(cat)
+echo "$input" | ~/.tmux/plugins/claude-tmux-sidebar/bin/cts statusline
+```
+
+このコマンドは何も出力しないので、status line の表示は変わりません。
+
 ## 必要なもの
 
 - tmux 3.2+

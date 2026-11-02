@@ -95,6 +95,15 @@ Each color has its own option and takes one of these forms of a tmux color: a na
 
 `@cts_context_windows` takes space-separated `model=tokens` pairs, where the model is the id Claude Code writes to the transcript (such as `claude-opus-5-5`). Without it, or for a model it does not list, the size is guessed: 1M for a model ending in `[1m]`, a Fable or Mythos model, or more than 200k tokens in use, and 200k otherwise. To find a model's size, run `claude -p --model <model> --output-format json "hi"` and read `modelUsage.<model id>.contextWindow`.
 
+Instead of listing sizes, you can let Claude Code report them: its status line input has each session's real size, which goes before `@cts_context_windows` and the guess. Add one line to your [status line](https://code.claude.com/docs/en/statusline) script, after it reads its input, and restart Claude:
+
+```bash
+input=$(cat)
+echo "$input" | ~/.tmux/plugins/claude-tmux-sidebar/bin/cts statusline
+```
+
+The command prints nothing, so the status line stays as it is.
+
 ## Requirements
 
 - tmux 3.2+

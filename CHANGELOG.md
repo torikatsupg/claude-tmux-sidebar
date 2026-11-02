@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- `claude-tmux-sidebar statusline` records each session's real context window size from Claude Code's status line input. Add one line to your status line script, as the README shows, and usage needs no `@cts_context_windows`; the recorded size goes before that option and the guess (#84).
+
 ## [0.8.0] - 2026-11-02
 
 ### Added

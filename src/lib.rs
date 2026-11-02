@@ -39,6 +39,7 @@ pub fn run(command: Command, ctx: &Context) -> ExitCode {
             client,
         } => jump::run(ctx, direction, from, client.as_deref()),
         Command::Hook => hook::run(ctx, &read_stdin()),
+        Command::Statusline => session::statusline::run(ctx, &read_stdin()),
         Command::Version => print_version(),
         Command::Sidebar => return interactive(ctx, Mode::Sidebar),
         Command::PopupUi { origin } => return interactive(ctx, Mode::Popup { origin }),
