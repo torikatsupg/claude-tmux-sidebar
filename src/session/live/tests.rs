@@ -99,7 +99,7 @@ fn shows_the_branch_and_context_a_hook_before_0_7_4_wrote() {
         .unwrap_or_default();
     let claude = claude(record, None);
     assert_eq!(claude.branch(), "main");
-    let windows = ContextWindows::parse("claude-opus-5-5=1000000");
+    let windows = ContextWindows::parse("claude-opus-4-6=1000000");
     assert_eq!(claude.context(&windows), Some(64));
     assert!(claude.has_context());
 }
@@ -131,11 +131,11 @@ fn the_transcript_usage_is_measured_against_the_configured_window() {
         branch: "main".to_owned(),
         usage: Some(Usage {
             tokens: 100_000,
-            model: "claude-opus-5-5".to_owned(),
+            model: "claude-opus-4-6".to_owned(),
         }),
     };
     let claude = claude(Record::default(), Some(latest));
-    let windows = ContextWindows::parse("claude-opus-5-5=1000000");
+    let windows = ContextWindows::parse("claude-opus-4-6=1000000");
     assert_eq!(claude.context(&windows), Some(10));
     assert_eq!(claude.context(&ContextWindows::default()), Some(50));
 }
@@ -151,7 +151,7 @@ fn using(tokens: u64, context_window: Option<u64>) -> Claude {
             branch: String::new(),
             usage: Some(Usage {
                 tokens,
-                model: "claude-opus-5-5".to_owned(),
+                model: "claude-opus-4-6".to_owned(),
             }),
         }),
     }
@@ -159,7 +159,7 @@ fn using(tokens: u64, context_window: Option<u64>) -> Claude {
 
 #[test]
 fn a_reported_window_size_goes_before_the_option_and_the_guess() {
-    let option = ContextWindows::parse("claude-opus-5-5=500000");
+    let option = ContextWindows::parse("claude-opus-4-6=500000");
     assert_eq!(using(100_000, Some(1_000_000)).context(&option), Some(10));
     assert_eq!(using(100_000, None).context(&option), Some(20));
     assert_eq!(

@@ -33,7 +33,7 @@ now=$(date +%s)
 state() { # pane state detail cwd age_seconds branch prompt context_percent
     local transcript="$TMP/${1#%}.jsonl"
     # One assistant entry, as Claude Code writes it: the sidebar reads the branch and token usage from it.
-    jq -nc --arg branch "$6" --argjson tokens "$(($8 * 2000))" \
+    jq -nc --arg branch "$6" --argjson tokens "$(($8 * 10000))" \
         '{type:"assistant", gitBranch:$branch, message:{model:"claude-opus-5-5", usage:{input_tokens:$tokens}}}' \
         >"$transcript"
     jq -n --arg pane "$1" --arg state "$2" --arg detail "$3" --arg cwd "$4" --arg socket "$socket" \

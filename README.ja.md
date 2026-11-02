@@ -93,9 +93,9 @@ tmux が既に割り当てているキー（例: `C-b` は `send-prefix`）を�
 | `@cts_color_warning` | context window の使用率（50% から） | `yellow` |
 | `@cts_color_critical` | context window の使用率（80% から） | `red` |
 
-`@cts_context_windows` には `モデル=トークン数` の組を空白区切りで書きます。モデルは Claude Code が transcript に書く ID（`claude-opus-5-5` など）です。設定しないとき、または設定にないモデルは、サイズを推測します。名前が `[1m]` で終わるモデル、Fable と Mythos のモデル、200k トークンを超えて使っているときは 1M、それ以外は 200k です。モデルのサイズは、`claude -p --model <モデル> --output-format json "hi"` を実行して `modelUsage.<モデル ID>.contextWindow` を見れば分かります。
+`@cts_context_windows` には `モデル=トークン数` の組を空白区切りで書きます。モデルは Claude Code が transcript に書く ID（`claude-opus-5-5` など）です。設定しないとき、または設定にないモデルは、[Claude Code の公式のルール](https://code.claude.com/docs/en/model-config#extended-context)でサイズを判定します。Fable、Mythos、Opus 4.7 以降、Sonnet 5 以降、Haiku 5.5 以降のモデル、名前が `[1m]` で終わるモデル、200k トークンを超えて使っているときは 1M、それ以外は 200k です。`CLAUDE_CODE_DISABLE_1M_CONTEXT=1` を使っているときなど、この判定が外れる場合だけモデルを書いてください。モデルのサイズは、`claude -p --model <モデル> --output-format json "hi"` を実行して `modelUsage.<モデル ID>.contextWindow` を見れば分かります。
 
-サイズを書く代わりに、Claude Code に教えてもらうこともできます。[status line](https://code.claude.com/docs/en/statusline) の入力にはセッションごとの実際のサイズが入っていて、これは `@cts_context_windows` と推測より優先されます。status line のスクリプトで入力を読んだあとに 1 行足して、Claude を起動し直してください。
+サイズは Claude Code に教えてもらうこともできます。[status line](https://code.claude.com/docs/en/statusline) の入力にはセッションごとの実際のサイズが入っていて、これは `@cts_context_windows` と上の判定より優先されます。任意の設定で、判定が外れるときだけ役に立ちます。status line のスクリプトで入力を読んだあとに 1 行足して、Claude を起動し直してください。
 
 ```bash
 input=$(cat)
