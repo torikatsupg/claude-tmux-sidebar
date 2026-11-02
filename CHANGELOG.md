@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- In the window tree, a window without Claude is a faint `#I:#W` at the window level, like the window headings, instead of a `·` row whose name sat one level deeper (#104).
+
 ## [0.11.0] - 2026-11-02
 
 ### Changed
