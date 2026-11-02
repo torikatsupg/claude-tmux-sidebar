@@ -1,4 +1,4 @@
-//! A window without Claude (`@cts_all_windows`): a quiet `#I:#W` row in the name column.
+//! Window rows: a window without Claude (`@cts_all_windows`), and the heading of a window in the tree.
 
 use ratatui::text::{Line, Span};
 
@@ -7,14 +7,22 @@ use crate::sidebar::update::Model;
 use crate::text::truncate;
 use crate::tmux::pane::Pane;
 
-/// `▌· 2:zsh`; the bar marks the window you are in.
+/// A window without Claude: `▌· 2:zsh` among flat rows, or `▌  2:zsh` faint at the window level of the
+/// tree; the bar marks the window you are in.
 pub fn line(model: &Model, pane: &Pane, width: usize) -> Line<'static> {
     let here = Some(pane.window_id) == model.snapshot.window;
-    let indent = if model.label.tree() { "  " } else { "" };
-    let width = width.saturating_sub(indent.len());
+    if model.label.tree() {
+        return Line::from(vec![
+            marker(model, here),
+            Span::raw("  "),
+            Span::styled(
+                truncate(&label(pane), width.saturating_sub(3)),
+                model.theme.dim,
+            ),
+        ]);
+    }
     Line::from(vec![
         marker(model, here),
-        Span::raw(indent),
         Span::styled("·", model.theme.dim),
         Span::raw(" "),
         Span::styled(

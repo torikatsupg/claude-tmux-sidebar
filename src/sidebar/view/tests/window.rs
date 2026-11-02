@@ -82,3 +82,21 @@ fn the_list_scrolls_to_keep_the_cursor_on_screen() {
     assert_eq!(screen.get(4).map(|s| s.trim_end()), Some(" · 9:w9"));
     assert!(screen.get(5).is_some_and(|s| s.contains("jump")));
 }
+
+#[test]
+fn in_the_tree_a_window_without_claude_sits_at_the_window_level() {
+    use crate::sidebar::label::{Label, SingleWindow};
+    let model = Model {
+        label: Label::Auto(SingleWindow::Inline),
+        ..window_model(false)
+    };
+    let lines = lines(&model, &EN, WIDTH, model.height);
+    let row = lines.get(3).cloned().unwrap_or_default();
+    assert_eq!(text(&row), "   3:zsh");
+    assert!(
+        row.spans
+            .iter()
+            .filter(|s| !s.content.trim().is_empty())
+            .all(|s| s.style.fg == Some(Theme::DEFAULT.dim))
+    );
+}
