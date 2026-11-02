@@ -37,7 +37,7 @@ Press `prefix + b` to open the sidebar. For other ways to install, see [Install]
 | ✓ (cyan) | done | The turn has ended and nothing is left running |
 | ○ (gray) | idle | Just started, or 60 s without input |
 
-Each session shows its directory and git branch, with the tool in use and how long it has been in that status on the right. The line below shows the last prompt you sent and how full the context window is (yellow from 50%, red from 80%). The window index (`1:api`) appears only when the tmux session has more than one window. A magenta bar on the left edge marks the window you are in.
+Each session shows its directory and git branch, with the tool in use and how long it has been in that status on the right. The line below shows the last prompt you sent and how full the context window is (yellow from 50%, red from 80%). The window index (`1:api`) appears only when the tmux session has more than one window. The rows of the window you are in have a slightly lighter background; when the cursor is on one of them, the window index is drawn in the accent color instead.
 
 ## Usage
 
@@ -69,8 +69,10 @@ set -g @cts_help on           # show the key help at the bottom
 set -g @cts_label auto        # rows: auto (sessions > windows > Claude) / dir (flat) / window (#I:#W)
 set -g @cts_single_window inline  # with auto, a named window alone in its session: inline / lines
 set -g @cts_all_windows off   # also list windows without Claude
+set -g @cts_indent 1          # spaces per level of the tree: 0-4
 set -g @cts_hook_index 77     # tmux hook array index (change only on conflicts)
 set -g @cts_color_accent '#D97757'  # colors: see below
+set -g @cts_color_active colour235  # background of your window's rows
 set -g @cts_context_windows 'claude-opus-5-5=1000000'  # context window size per model
 ```
 
@@ -88,8 +90,9 @@ Each color has its own option and takes one of these forms of a tmux color: a na
 
 | Option | Colors | Default |
 |---|---|---|
-| `@cts_color_accent` | the title and the bar on the left edge that marks your window | `magenta` |
+| `@cts_color_accent` | the title, and the window index on the cursor row of your window | `magenta` |
 | `@cts_color_cursor` | the cursor row's background | `colour237` |
+| `@cts_color_active` | the background of the rows of the window you are in | `colour235` |
 | `@cts_color_muted` | secondary text: branch, prompt, help labels | `colour245` |
 | `@cts_color_dim` | faint text: separator line, idle mark | `brightblack` |
 | `@cts_color_waiting` | the waiting mark | `yellow` |

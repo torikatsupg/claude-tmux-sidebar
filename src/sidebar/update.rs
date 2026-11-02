@@ -19,6 +19,7 @@ pub struct Model {
     /// The key help is shown on the last line.
     pub help: bool,
     pub label: super::label::Label,
+    pub indent: super::indent::Indent,
     pub theme: super::theme::Theme,
 }
 
@@ -143,10 +144,9 @@ fn moved_to(model: &Model, action: Action) -> Option<RowKey> {
 }
 
 fn select(model: Model, key: Option<RowKey>) -> Model {
-    let Model { selection, .. } = &model;
     let selection = Selection {
-        selected: key.or_else(|| selection.selected.clone()),
-        synced: selection.synced.clone(),
+        selected: key.or_else(|| model.selection.selected.clone()),
+        synced: model.selection.synced.clone(),
     };
     Model { selection, ..model }
 }

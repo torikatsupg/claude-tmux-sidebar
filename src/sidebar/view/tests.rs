@@ -72,15 +72,15 @@ fn screen(model: &Model, messages: &Messages) -> Vec<String> {
 fn draws_title_list_and_help() {
     let screen = screen(&model(Status::Waiting, "Edit", false), &EN);
     assert_eq!(screen.len(), 8);
-    assert_eq!(screen.first().map(String::as_str), Some(" Claude ◆1 "));
-    assert_eq!(screen.get(2).map(String::as_str), Some(" work"));
+    assert_eq!(screen.first().map(String::as_str), Some("Claude ◆1 "));
+    assert_eq!(screen.get(2).map(String::as_str), Some("work"));
     assert_eq!(
         screen.get(3).map(String::as_str),
-        Some(" ◆ api                    Edit 2s ")
+        Some("◆ api                     Edit 2s ")
     );
     assert_eq!(
         screen.last().map(String::as_str),
-        Some(" ⏎ jump  j/k move  q close")
+        Some("⏎ jump  j/k move  q close")
     );
 }
 
@@ -94,16 +94,6 @@ fn hiding_the_help_gives_its_line_to_the_list() {
     assert_eq!(screen.len(), 8);
     assert!(screen.iter().all(|line| !line.contains("jump")));
     assert_eq!(model.list_end(model.height), 8);
-}
-
-#[test]
-fn the_session_in_this_window_is_marked() {
-    let mut model = model(Status::Done, "", false);
-    model.snapshot.window = Some(pane(1, 2).window_id);
-    assert_eq!(
-        screen(&model, &EN).get(3).map(String::as_str),
-        Some("▌✓ api                         2s ")
-    );
 }
 
 #[test]
@@ -154,11 +144,11 @@ fn a_session_shows_its_branch_then_its_prompt_and_context() {
     let screen = screen(&model_of(busy_claude(1, Some(84_000)), false), &EN);
     assert_eq!(
         screen.get(3).map(String::as_str),
-        Some(" ✓ api feat/rows               2s ")
+        Some("✓ api feat/rows                2s ")
     );
     assert_eq!(
         screen.get(4).map(String::as_str),
-        Some(" └ fix the failing sidebar t… 42% ")
+        Some("└ fix the failing sidebar te… 42% ")
     );
 }
 
@@ -167,27 +157,29 @@ fn the_window_index_shows_only_with_several_windows() {
     let screen = screen(&model_of(busy_claude(3, None), false), &EN);
     assert_eq!(
         screen.get(3).map(String::as_str),
-        Some(" ✓ 2:api feat/rows             2s ")
+        Some("✓ 2:api feat/rows              2s ")
     );
     assert_eq!(
         screen.get(4).map(String::as_str),
-        Some(" └ fix the failing sidebar test … ")
+        Some("└ fix the failing sidebar test p… ")
     );
 }
 
 #[test]
-fn a_narrow_row_cuts_the_branch_then_drops_it() {
+fn a_narrow_row_cuts_the_branch() {
     let model = model_of(busy_claude(1, Some(180_000)), true);
     let row = |width| lines(&model, &EN, width, model.height).get(3).map(text);
-    assert_eq!(row(16).as_deref(), Some(" ✓ api feat… 2s "));
-    assert_eq!(row(14).as_deref(), Some(" ✓ api     2s "));
+    assert_eq!(row(16).as_deref(), Some("✓ api feat/… 2s "));
+    assert_eq!(row(14).as_deref(), Some("✓ api fea… 2s "));
     let lines = lines(&model, &EN, 16, model.height);
     let detail = lines.get(4).cloned().unwrap_or_default();
     assert!(detail.spans.iter().all(|s| s.style.bg == Some(CURSOR)));
     assert!(detail.spans.iter().any(|s| s.style.fg == Some(Color::Red)));
 }
 
+mod active;
 mod colors;
 mod context_window;
+mod indent;
 mod label;
 mod window;

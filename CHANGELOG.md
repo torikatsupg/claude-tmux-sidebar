@@ -6,6 +6,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- The window you are in is marked by the `@cts_color_active` background (default `colour235`) on its rows, instead of the bar in the left column. Rows now start at the left edge, one column wider (#108).
+- When the cursor is on a row of the window you are in, the background is the cursor's and the window index (`2:`) takes the accent color, so the two marks do not hide each other (#108).
+- The tree is indented one space per level instead of two. `@cts_indent` sets 0 to 4 spaces per level (#108).
 - In the window tree, a window without Claude is a faint `#I:#W` at the window level, like the window headings, instead of a `·` row whose name sat one level deeper (#104).
 - Every Claude session takes two lines: the detail line shows even before the first prompt, and a session that has not replied yet shows `0%` context usage. Right after `/compact` the usage is still left blank until the next reply (#105).
 

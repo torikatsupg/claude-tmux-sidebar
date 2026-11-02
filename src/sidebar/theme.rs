@@ -6,6 +6,7 @@ use ratatui::style::Color;
 pub struct Theme {
     pub accent: Color,
     pub cursor: Color,
+    pub active: Color,
     pub muted: Color,
     pub dim: Color,
     pub waiting: Color,
@@ -25,6 +26,7 @@ impl Theme {
     pub const DEFAULT: Self = Self {
         accent: Color::Magenta,
         cursor: Color::Indexed(237),
+        active: Color::Indexed(235),
         // Readable but quieter than the default text, on dark and light terminal themes.
         muted: Color::Indexed(245),
         dim: Color::DarkGray,
@@ -47,6 +49,7 @@ impl Theme {
         Self {
             accent: pick("accent", d.accent),
             cursor: pick("cursor", d.cursor),
+            active: pick("active", d.active),
             muted: pick("muted", d.muted),
             dim: pick("dim", d.dim),
             waiting: pick("waiting", d.waiting),
