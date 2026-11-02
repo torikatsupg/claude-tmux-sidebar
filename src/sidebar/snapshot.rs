@@ -3,6 +3,8 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use super::headings;
+use super::label::Label;
 use super::rows::{self, Row};
 use crate::context::Context;
 use crate::listing;
@@ -38,6 +40,7 @@ pub struct Scope {
     pub popup: bool,
     /// List the windows without Claude too (`@cts_all_windows`).
     pub all_windows: bool,
+    pub label: Label,
 }
 
 /// Reads tmux, the state files and the transcripts that changed since `transcripts`.
@@ -57,7 +60,7 @@ pub fn load(ctx: &Context, scope: &Scope, transcripts: Transcripts) -> (Snapshot
     let snapshot = Snapshot {
         context_windows,
         ..from_parts(
-            rows::with_windows(&groups, &windows),
+            headings::with_headings(&rows::with_windows(&groups, &windows), scope.label),
             &panes,
             scope.me,
             scope.popup,

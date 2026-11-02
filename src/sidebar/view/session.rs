@@ -4,9 +4,9 @@
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 
+use super::session_name as name;
 use crate::session::Status;
 use crate::session::live::Claude;
-use crate::sidebar::label::Label;
 use crate::sidebar::theme::Theme;
 use crate::sidebar::update::Model;
 use crate::text::{self, age, truncate};
@@ -14,11 +14,11 @@ use crate::text::{self, age, truncate};
 const SPINNER: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 /// The name column keeps at least this many cells when the status text is long.
 const MIN_NAME_WIDTH: usize = 12;
-/// A branch squeezed below this many cells is dropped rather than cut to a stub.
-const MIN_BRANCH_WIDTH: usize = 4;
 /// Context usage from this percent on is a warning, and from the next one on an alarm.
 const CONTEXT_WARN: u8 = 50;
 const CONTEXT_ALARM: u8 = 80;
+const UNDER_SESSION: &str = "  ";
+const UNDER_WINDOW: &str = "    ";
 
 pub fn look(theme: &Theme, status: Status) -> (&'static str, Color) {
     match status {
@@ -31,17 +31,20 @@ pub fn look(theme: &Theme, status: Status) -> (&'static str, Color) {
 
 /// `▌● 2:api main                        Bash 3s `; the bar marks the window you are in.
 pub fn line(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
+    let indent = indent(model, claude);
+    let width = width.saturating_sub(indent.len());
     let (_, color) = look(&model.theme, claude.record.state);
     let right = truncate(
         &status_text(model, claude),
         width.saturating_sub(MIN_NAME_WIDTH),
     );
     let room = width.saturating_sub(5 + text::width(&right));
-    let (name, branch) = label(model, claude, room);
+    let (name, branch) = name::label(model, claude, room);
     let here = here(model, claude);
     let used = text::width(&name) + text::width(&branch) + text::width(&right);
     Line::from(vec![
         marker(model, here),
+        Span::raw(indent),
         icon(model, claude.record.state),
         Span::raw(" "),
         Span::styled(name, bold_if(here)),
@@ -54,6 +57,8 @@ pub fn line(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
 
 /// `▌└ fix the failing test…               42% `: the prompt lines up with the name above it.
 pub fn detail(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
+    let indent = indent(model, claude);
+    let width = width.saturating_sub(indent.len());
     let record = &claude.record;
     let theme = &model.theme;
     let windows = &model.snapshot.context_windows;
@@ -71,6 +76,7 @@ pub fn detail(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
     let gap = width.saturating_sub(4 + text::width(&prompt) + text::width(&context));
     Line::from(vec![
         marker(model, here(model, claude)),
+        Span::raw(indent),
         Span::styled("└ ", theme.dim),
         Span::styled(prompt, theme.muted),
         Span::raw(" ".repeat(gap)),
@@ -89,34 +95,23 @@ fn context_color(theme: &Theme, percent: u8) -> Color {
     }
 }
 
+/// In a tree, a row sits one level under its window heading, or under its session.
+fn indent(model: &Model, claude: &Claude) -> &'static str {
+    if name::under_heading(model, claude) {
+        UNDER_WINDOW
+    } else if model.label.tree() {
+        UNDER_SESSION
+    } else {
+        ""
+    }
+}
+
 /// The session runs in the window the sidebar belongs to.
 fn here(model: &Model, claude: &Claude) -> bool {
     claude
         .pane
         .as_ref()
         .is_some_and(|p| Some(p.window_id) == model.snapshot.window)
-}
-
-/// The name and the muted text after it, cut to `room` cells together.
-fn label(model: &Model, claude: &Claude, room: usize) -> (String, String) {
-    let named = claude.pane.as_ref().is_some_and(|p| p.window_named);
-    match model.label {
-        Label::Window => (truncate(&window(claude), room), String::new()),
-        Label::Auto if named => (truncate(&window(claude), room), String::new()),
-        Label::Dir | Label::Auto => {
-            let name = truncate(&name(claude), room);
-            let branch = branch(claude.branch(), room.saturating_sub(text::width(&name)));
-            (name, branch)
-        }
-    }
-}
-
-/// ` main` after the name, cut to `room` cells; empty when there is no branch or no room for it.
-fn branch(branch: &str, room: usize) -> String {
-    if branch.is_empty() || room < MIN_BRANCH_WIDTH + 1 {
-        return String::new();
-    }
-    format!(" {}", truncate(branch, room - 1))
 }
 
 /// The bar on the left edge for the window you are in.
@@ -146,26 +141,6 @@ fn bold_if(on: bool) -> Modifier {
     } else {
         Modifier::empty()
     }
-}
-
-/// `window:directory` when the tmux session has several windows, otherwise just the directory.
-fn name(claude: &Claude) -> String {
-    let dir = std::path::Path::new(&claude.record.cwd)
-        .file_name()
-        .map_or_else(|| "?".to_owned(), |d| d.to_string_lossy().into_owned());
-    claude
-        .pane
-        .as_ref()
-        .filter(|p| p.session_windows > 1)
-        .map_or_else(|| dir.clone(), |p| format!("{}:{dir}", p.window_index))
-}
-
-/// `#I:#W` of the session's window; the directory outside tmux.
-fn window(claude: &Claude) -> String {
-    claude
-        .pane
-        .as_ref()
-        .map_or_else(|| name(claude), super::window::label)
 }
 
 /// `[detail ]age`; the icon already shows the status, and the detail (tool name) is shown only while

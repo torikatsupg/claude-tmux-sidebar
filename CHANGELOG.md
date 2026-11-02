@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- `@cts_label auto` shows a tree of sessions, windows and Claude rows, and keeps the directory and branch on each row. In a session with several windows, each window is a heading: `#I:#W` when named by hand, otherwise `#I`. A session with one window has no window heading and reads `session/name` when the window is named; the new `@cts_single_window lines` option gives a named window its own heading instead (#94).
+- Session headings lose their `▾`, which looked like a control that folds the list (#94).
+
 ## [0.10.0] - 2026-11-02
 
 ### Added

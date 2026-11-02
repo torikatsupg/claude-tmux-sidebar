@@ -1,5 +1,6 @@
 use super::*;
-use crate::sidebar::label::Label;
+use crate::sidebar::headings::with_headings;
+use crate::sidebar::label::{Label, SingleWindow};
 
 fn window_model(name: &str) -> Model {
     let mut claude = busy_claude(1, None);
@@ -33,39 +34,72 @@ fn a_narrow_row_cuts_the_window_label() {
     assert_eq!(row.as_deref(), Some(" ✓ 2:a long… 2s "));
 }
 
-fn auto_model(named: bool) -> Model {
-    let mut claude = busy_claude(1, None);
+fn auto_model(named: bool, windows: u32, single: SingleWindow) -> Model {
+    let mut claude = busy_claude(windows, None);
     claude.pane = claude.pane.map(|p| Pane {
-        window_name: "2.1.316".to_owned(),
+        session: "work".to_owned(),
+        window_name: "mywork".to_owned(),
         window_named: named,
         ..p
     });
+    let model = model_of(claude, false);
+    let label = Label::Auto(single);
+    let rows = with_headings(&model.snapshot.rows, label);
     Model {
-        label: Label::Auto,
-        ..model_of(claude, false)
+        label,
+        snapshot: Snapshot {
+            rows,
+            ..model.snapshot
+        },
+        ..model
     }
 }
 
 #[test]
-fn the_auto_label_names_only_a_window_named_by_hand() {
-    let named = screen(&auto_model(true), &EN);
-    assert!(named.get(3).is_some_and(|row| row.contains("2:2.1.316")));
-    let automatic = screen(&auto_model(false), &EN);
-    let same_as_dir = screen(
-        &Model {
-            label: Label::Dir,
-            ..auto_model(false)
-        },
-        &EN,
-    );
-    assert_eq!(automatic, same_as_dir);
+fn a_named_window_is_a_heading_over_indented_rows() {
+    let screen = screen(&auto_model(true, 2, SingleWindow::Inline), &EN);
+    assert_eq!(screen.get(3).map(String::as_str), Some("   2:mywork"));
+    let row = screen.get(4).cloned().unwrap_or_default();
+    assert!(row.starts_with("     ✓ ") && !row.contains("2:"), "{row}");
+    assert!(row.contains("feat"), "the branch stays: {row}");
+    let detail = screen.get(5).cloned().unwrap_or_default();
+    assert!(detail.starts_with("     └ "), "{detail}");
 }
 
 #[test]
-fn only_auto_and_window_are_read_from_the_option() {
-    assert_eq!(Label::parse(Some("auto")), Label::Auto);
-    assert_eq!(Label::parse(Some("window")), Label::Window);
-    assert_eq!(Label::parse(Some("dir")), Label::Dir);
-    assert_eq!(Label::parse(Some("other")), Label::Dir);
-    assert_eq!(Label::parse(None), Label::Dir);
+fn a_window_tmux_named_is_a_heading_with_its_number() {
+    let screen = screen(&auto_model(false, 2, SingleWindow::Inline), &EN);
+    assert_eq!(screen.get(3).map(String::as_str), Some("   2"));
+    assert!(screen.get(4).is_some_and(|row| row.starts_with("     ✓ ")));
+}
+
+#[test]
+fn indented_rows_keep_the_width() {
+    let model = auto_model(true, 2, SingleWindow::Inline);
+    let width = usize::from(WIDTH);
+    let rows = screen(&model, &EN);
+    assert_eq!(rows.get(4).map(|r| text::width(r)), Some(width));
+    assert_eq!(rows.get(5).map(|r| text::width(r)), Some(width));
+}
+
+#[test]
+fn a_named_window_alone_joins_the_session_line() {
+    let screen = screen(&auto_model(true, 1, SingleWindow::Inline), &EN);
+    assert_eq!(screen.get(2).map(String::as_str), Some(" work/mywork"));
+    assert!(screen.get(3).is_some_and(|row| row.starts_with("   ✓ ")));
+}
+
+#[test]
+fn a_window_alone_without_a_name_puts_its_rows_under_the_session() {
+    let screen = screen(&auto_model(false, 1, SingleWindow::Inline), &EN);
+    assert_eq!(screen.get(2).map(String::as_str), Some(" work"));
+    assert!(screen.get(3).is_some_and(|row| row.starts_with("   ✓ ")));
+}
+
+#[test]
+fn the_lines_option_gives_a_named_window_alone_its_own_heading() {
+    let screen = screen(&auto_model(true, 1, SingleWindow::Lines), &EN);
+    assert_eq!(screen.get(2).map(String::as_str), Some(" work"));
+    assert_eq!(screen.get(3).map(String::as_str), Some("   2:mywork"));
+    assert!(screen.get(4).is_some_and(|row| row.starts_with("     ✓ ")));
 }
