@@ -11,8 +11,10 @@ use super::update::Model;
 use crate::i18n::Messages;
 use crate::listing::GroupName;
 use crate::session::Status;
+use crate::text::truncate;
 
 mod session;
+mod session_name;
 mod window;
 
 const TITLE: &str = "Claude";
@@ -109,6 +111,11 @@ fn row_line(model: &Model, messages: &Messages, row: &Row, width: usize) -> Line
                 .add_modifier(Modifier::ITALIC),
         ),
         Row::Heading(name) => heading(name, messages),
+        Row::NamedSession { session, window } => {
+            let text = truncate(&format!("{session}/{window}"), width.saturating_sub(1));
+            bold_line(text)
+        }
+        Row::WindowHeading(pane) => window::heading(model, pane, width),
         Row::Session(claude) => session::line(model, claude, width),
         Row::Detail(claude) => session::detail(model, claude, width),
         Row::Window(pane) => window::line(model, pane, width),
@@ -125,10 +132,11 @@ fn heading(name: &GroupName, messages: &Messages) -> Line<'static> {
         GroupName::Session(s) => s.as_str(),
         GroupName::Outside => messages.outside,
     };
-    Line::from(vec![
-        Span::raw(" "),
-        Span::styled(format!("▾ {text}"), Modifier::BOLD),
-    ])
+    bold_line(text.to_owned())
+}
+
+fn bold_line(text: String) -> Line<'static> {
+    Line::from(vec![Span::raw(" "), Span::styled(text, Modifier::BOLD)])
 }
 
 /// The cursor: a background across the full width, under the row's own colors.

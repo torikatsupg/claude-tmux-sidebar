@@ -21,6 +21,13 @@ pub enum Row {
     Empty(String),
     /// A window without Claude (`@cts_all_windows`), as the pane the user works in there.
     Window(Pane),
+    /// A group heading that also names the session's only window.
+    NamedSession {
+        session: String,
+        window: String,
+    },
+    /// The heading of a window named by hand, above its Claude sessions.
+    WindowHeading(Pane),
 }
 
 /// A selectable row: a tmux session without Claude (its placeholder), a Claude session by id, or a
@@ -88,7 +95,11 @@ pub fn key(row: &Row) -> Option<RowKey> {
         Row::Empty(name) => Some(RowKey::Session(name.clone())),
         Row::Session(c) => Some(RowKey::Claude(c.record.session_id.clone())),
         Row::Window(p) => Some(RowKey::Window(p.window_id)),
-        Row::Heading(_) | Row::Detail(_) | Row::Gap => None,
+        Row::Heading(_)
+        | Row::NamedSession { .. }
+        | Row::WindowHeading(_)
+        | Row::Detail(_)
+        | Row::Gap => None,
     }
 }
 

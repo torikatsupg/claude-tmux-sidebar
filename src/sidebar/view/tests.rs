@@ -73,7 +73,7 @@ fn draws_title_list_and_help() {
     let screen = screen(&model(Status::Waiting, "Edit", false), &EN);
     assert_eq!(screen.len(), 8);
     assert_eq!(screen.first().map(String::as_str), Some(" Claude ◆1 "));
-    assert_eq!(screen.get(2).map(String::as_str), Some(" ▾ work"));
+    assert_eq!(screen.get(2).map(String::as_str), Some(" work"));
     assert_eq!(
         screen.get(3).map(String::as_str),
         Some(" ◆ api                    Edit 2s ")

@@ -21,6 +21,19 @@ pub fn line(model: &Model, pane: &Pane, width: usize) -> Line<'static> {
     ])
 }
 
+/// `▌  2:mywork`: above the Claude sessions of a window named by hand.
+pub fn heading(model: &Model, pane: &Pane, width: usize) -> Line<'static> {
+    let here = Some(pane.window_id) == model.snapshot.window;
+    Line::from(vec![
+        marker(model, here),
+        Span::raw("  "),
+        Span::styled(
+            truncate(&label(pane), width.saturating_sub(3)),
+            model.theme.muted,
+        ),
+    ])
+}
+
 /// `#I:#W`, as tmux names the window.
 pub(super) fn label(pane: &Pane) -> String {
     format!("{}:{}", pane.window_index, pane.window_name)

@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- `@cts_label auto` keeps the directory and branch on each row: a window named by hand now gets a heading with its `#I:#W`, with its Claude rows indented under it. A named window alone in its tmux session joins the session's line as `session/name`; the new `@cts_single_window lines` option gives it its own heading instead (#94).
+- Session headings lose their `▾`, which looked like a control that folds the list (#94).
+
 ## [0.10.0] - 2026-11-02
 
 ### Added

@@ -2,6 +2,7 @@
 //! reads input, applies the pure [`update`](update::update) and runs the resulting effects.
 
 mod effect;
+pub mod headings;
 mod input;
 pub mod label;
 pub mod rows;
@@ -48,7 +49,6 @@ struct Env<'a> {
     ctx: &'a Context,
     scope: snapshot::Scope,
     help: bool,
-    label: Label,
     theme: Theme,
     messages: &'static Messages,
     /// The spinner runs on the clock, not on the number of events.
@@ -75,9 +75,9 @@ pub fn run(ctx: &Context, mode: Mode) -> io::Result<()> {
             me,
             popup,
             all_windows: tmux::global_option("@cts_all_windows").as_deref() == Some("on"),
+            label: Label::from_options(tmux::global_option),
         },
         help: tmux::global_option("@cts_help").as_deref() != Some("off"),
-        label: Label::parse(tmux::global_option(label::OPTION).as_deref()),
         theme: Theme::from_options(tmux::global_option),
         messages: i18n::messages(lang.as_deref()),
         started: Instant::now(),
@@ -97,7 +97,7 @@ fn event_loop(terminal: &mut DefaultTerminal, env: &Env<'_>) -> io::Result<()> {
     let model = Model {
         popup: env.scope.popup,
         help: env.help,
-        label: env.label,
+        label: env.scope.label,
         theme: env.theme,
         height,
         now: context::now(),
