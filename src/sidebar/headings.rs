@@ -85,6 +85,7 @@ mod tests {
                 Row::Session(c) => c.record.session_id.clone(),
                 _ => "other".to_owned(),
             })
+            .filter(|row| row != "other")
             .collect()
     }
 

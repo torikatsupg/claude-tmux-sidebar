@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Changed
 
 - In the window tree, a window without Claude is a faint `#I:#W` at the window level, like the window headings, instead of a `·` row whose name sat one level deeper (#104).
+- Every Claude session takes two lines: the detail line shows even before the first prompt, and a session that has not replied yet shows `0%` context usage. Right after `/compact` the usage is still left blank until the next reply (#105).
 
 ## [0.11.0] - 2026-11-02
 

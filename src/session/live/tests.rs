@@ -101,7 +101,6 @@ fn shows_the_branch_and_context_a_hook_before_0_7_4_wrote() {
     assert_eq!(claude.branch(), "main");
     let windows = ContextWindows::parse("claude-opus-4-6=1000000");
     assert_eq!(claude.context(&windows), Some(64));
-    assert!(claude.has_context());
 }
 
 #[test]
@@ -116,13 +115,22 @@ fn prefers_the_transcript_to_the_old_branch_and_context() {
         branch: "new".to_owned(),
         usage: None,
     };
-    let read = claude(record.clone(), Some(latest));
-    assert_eq!(read.branch(), "new");
-    assert!(!read.has_context());
+    let windows = ContextWindows::default();
+    let compacted = claude(record.clone(), Some(latest));
+    assert_eq!(compacted.branch(), "new");
+    assert_eq!(
+        compacted.context(&windows),
+        None,
+        "unknown after a compaction"
+    );
 
-    let unread = claude(record, None);
-    assert_eq!(unread.branch(), "");
-    assert!(!unread.has_context());
+    let unanswered = claude(record, None);
+    assert_eq!(unanswered.branch(), "");
+    assert_eq!(
+        unanswered.context(&windows),
+        Some(0),
+        "nothing used before a reply"
+    );
 }
 
 #[test]

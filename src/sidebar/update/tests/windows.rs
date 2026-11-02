@@ -61,7 +61,7 @@ fn enter_on_a_window_goes_there() {
 
 #[test]
 fn clicking_a_window_goes_there() {
-    let y = rows::FIRST_ROW + 2;
+    let y = rows::FIRST_ROW + 3;
     let (model, effects) = update(model(), Msg::Clicked { y });
     assert_eq!(selected(&model), Some(&window_key()));
     assert_eq!(effects, goto_window());
