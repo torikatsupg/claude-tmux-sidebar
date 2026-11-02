@@ -143,7 +143,7 @@ fn busy_claude(windows: u32, tokens: Option<u64>) -> Claude {
             branch: "feat/rows".to_owned(),
             usage: tokens.map(|tokens| Usage {
                 tokens,
-                model: "claude-opus-5-5".to_owned(),
+                model: "claude-opus-4-6".to_owned(),
             }),
         }),
     }

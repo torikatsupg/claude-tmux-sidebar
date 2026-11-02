@@ -93,9 +93,9 @@ Each color has its own option and takes one of these forms of a tmux color: a na
 | `@cts_color_warning` | context window usage from 50% | `yellow` |
 | `@cts_color_critical` | context window usage from 80% | `red` |
 
-`@cts_context_windows` takes space-separated `model=tokens` pairs, where the model is the id Claude Code writes to the transcript (such as `claude-opus-5-5`). Without it, or for a model it does not list, the size is guessed: 1M for a model ending in `[1m]`, a Fable or Mythos model, or more than 200k tokens in use, and 200k otherwise. To find a model's size, run `claude -p --model <model> --output-format json "hi"` and read `modelUsage.<model id>.contextWindow`.
+`@cts_context_windows` takes space-separated `model=tokens` pairs, where the model is the id Claude Code writes to the transcript (such as `claude-opus-5-5`). Without it, or for a model it does not list, the size follows [Claude Code's documented rules](https://code.claude.com/docs/en/model-config#extended-context): 1M for Fable, Mythos, Opus 4.7 and later, Sonnet 5 and later, and Haiku 5.5 and later, for a model ending in `[1m]`, or with more than 200k tokens in use, and 200k otherwise. List a model only when those rules miss, such as with `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`. To find a model's size, run `claude -p --model <model> --output-format json "hi"` and read `modelUsage.<model id>.contextWindow`.
 
-Instead of listing sizes, you can let Claude Code report them: its status line input has each session's real size, which goes before `@cts_context_windows` and the guess. Add one line to your [status line](https://code.claude.com/docs/en/statusline) script, after it reads its input, and restart Claude:
+You can also let Claude Code report the size: its status line input has each session's real size, which goes before `@cts_context_windows` and the rules. This is optional and useful only when the rules miss. Add one line to your [status line](https://code.claude.com/docs/en/statusline) script, after it reads its input, and restart Claude:
 
 ```bash
 input=$(cat)

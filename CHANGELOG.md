@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- Context usage is right without any setup for models that run with the 1M window by default: Opus 4.7 and later, Sonnet 5 and later, and Haiku 5.5 and later no longer show five times their real usage. The size follows Claude Code's documented rules (#88).
+
 ## [0.9.0] - 2026-11-02
 
 ### Added
