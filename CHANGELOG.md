@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-11-11
+
+### Changed
+
+- Updated the `unicode-width` (0.2.3) and `rustix` (1.1.6) dependencies (#112, #113).
+
 ## [0.12.0] - 2026-11-02
 
 ### Changed
@@ -179,7 +185,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `install.sh` for manual setups, with `--hooks-only` and `--uninstall`.
 - Options: `@cts_width`, `@cts_toggle_key` (several keys allowed), `@cts_popup_key`, `@cts_next_key`, `@cts_prev_key`, `@cts_default`, `@cts_lang` (`en` / `ja`), `@cts_hook_index`.
 
-[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/torikatsupg/claude-tmux-sidebar/compare/v0.9.0...v0.10.0
