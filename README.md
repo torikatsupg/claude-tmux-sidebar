@@ -70,6 +70,7 @@ set -g @cts_label auto        # rows: auto (sessions > windows > Claude) / dir (
 set -g @cts_single_window inline  # with auto, a named window alone in its session: inline / lines
 set -g @cts_all_windows off   # also list windows without Claude
 set -g @cts_indent 1          # spaces per level of the tree: 0-4
+set -g @cts_notify off        # notify when Claude waits for you or is done: off / tmux / os / all
 set -g @cts_hook_index 77     # tmux hook array index (change only on conflicts)
 set -g @cts_color_accent '#D97757'  # colors: see below
 set -g @cts_color_active colour235  # background of your window's rows
@@ -111,6 +112,33 @@ echo "$input" | ~/.tmux/plugins/claude-tmux-sidebar/bin/cts statusline
 ```
 
 The command prints nothing, so the status line stays as it is.
+
+## Status line and notifications
+
+With the sidebar closed or another window in front, you can still see what needs you. `cts status` prints how many Claude sessions are waiting for you, running and done, such as `◆2 ⠹1 ✓3`. A status no session is in is left out, and with none of them it prints nothing. Put it in `status-right`:
+
+```tmux
+set -g status-right '#(~/.tmux/plugins/claude-tmux-sidebar/bin/cts status) %H:%M'
+set -g status-interval 5   # how often tmux reruns it, in seconds (default 15)
+```
+
+To color it, wrap it in a tmux style, or add `--color` to color each count with `@cts_color_waiting`, `@cts_color_running` and `@cts_color_done` (yellow, green and cyan by default). Each colored count ends with `#[fg=default]`.
+
+```tmux
+set -g status-right '#[fg=yellow]#(~/.tmux/plugins/claude-tmux-sidebar/bin/cts status)#[default] %H:%M'
+set -g status-right '#(~/.tmux/plugins/claude-tmux-sidebar/bin/cts status --color) %H:%M'
+```
+
+`@cts_notify` also tells you when a session starts waiting for you or is done:
+
+| Value | Notification |
+|---|---|
+| `off` (default) | none |
+| `tmux` | a message with the tmux session and the status on the client you use, and a bell in the session's window |
+| `os` | a desktop notification, with `osascript` on macOS or `notify-send` on Linux; nothing when the command is missing |
+| `all` | both |
+
+There is no notification when the client you used last shows the session's window, for a session that already had that status, or for a prompt notification that arrives after you answered it. Only sessions running in tmux are notified. The option is read on each change, so a new value takes effect right away.
 
 ## Requirements
 

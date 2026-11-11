@@ -11,6 +11,7 @@ use event::{Event, Payload};
 use transition::Outcome;
 
 use crate::context::{self, Context};
+use crate::notify;
 use crate::process;
 use crate::session::{Record, store, valid_session_id};
 
@@ -39,10 +40,10 @@ fn handle(ctx: &Context, input: &str) -> io::Result<()> {
         }
         Outcome::Update(change) => {
             let origin = Origin::current(ctx, prev.as_ref());
-            store::write(
-                &ctx.state_dir,
-                &compose(&payload, prev.as_ref(), change, &origin),
-            )
+            let record = compose(&payload, prev.as_ref(), change, &origin);
+            store::write(&ctx.state_dir, &record)?;
+            notify::send::run(ctx, prev.map(|r| r.state), &record);
+            Ok(())
         }
     }
 }

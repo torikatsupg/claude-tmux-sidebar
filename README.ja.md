@@ -70,6 +70,7 @@ set -g @cts_label auto        # 行の並べ方: auto（セッション > ウィ
 set -g @cts_single_window inline  # auto のとき、セッションに 1 つだけの名前付きウィンドウ: inline / lines
 set -g @cts_all_windows off   # Claude のいないウィンドウも一覧に出す
 set -g @cts_indent 1          # 階層ごとの字下げ（空白の数）: 0〜4
+set -g @cts_notify off        # 承認待ち・完了になったときの通知: off / tmux / os / all
 set -g @cts_hook_index 77     # tmux hook 配列のインデックス（衝突時のみ変更）
 set -g @cts_color_accent '#D97757'  # 色（下の表を参照）
 set -g @cts_color_active colour235  # 今いるウィンドウの行の背景
@@ -111,6 +112,33 @@ echo "$input" | ~/.tmux/plugins/claude-tmux-sidebar/bin/cts statusline
 ```
 
 このコマンドは何も出力しないので、status line の表示は変わりません。
+
+## status line と通知
+
+サイドバーを閉じていても、別のウィンドウにいても、手が必要なセッションに気づけます。`cts status` は承認待ち・稼働中・完了の Claude の数を `◆2 ⠹1 ✓3` のように出します。0 件の状態は出さず、どれも 0 なら何も出しません。`status-right` に書いて使います。
+
+```tmux
+set -g status-right '#(~/.tmux/plugins/claude-tmux-sidebar/bin/cts status) %H:%M'
+set -g status-interval 5   # tmux が実行し直す間隔（秒、既定は 15）
+```
+
+色を付けるなら tmux のスタイルで囲むか、`--color` を付けます。`--color` では件数ごとに `@cts_color_waiting`・`@cts_color_running`・`@cts_color_done` の色が付きます（既定は黄・緑・シアン）。色を付けた件数の後ろには `#[fg=default]` が入ります。
+
+```tmux
+set -g status-right '#[fg=yellow]#(~/.tmux/plugins/claude-tmux-sidebar/bin/cts status)#[default] %H:%M'
+set -g status-right '#(~/.tmux/plugins/claude-tmux-sidebar/bin/cts status --color) %H:%M'
+```
+
+`@cts_notify` を設定すると、セッションが承認待ちや完了になったときに知らせます。
+
+| 値 | 通知 |
+|---|---|
+| `off`（既定） | なし |
+| `tmux` | 使っているクライアントに tmux セッション名と状態を表示し、そのセッションのウィンドウでベルを鳴らす |
+| `os` | デスクトップ通知。macOS は `osascript`、Linux は `notify-send` を使い、コマンドが無ければ何もしない |
+| `all` | 両方 |
+
+最後に使ったクライアントにそのセッションのウィンドウが映っているとき、もともと同じ状態だったとき、答えたあとに遅れて届いた承認の通知では知らせません。通知するのは tmux の中で動いているセッションだけです。設定は変化のたびに読むので、変えるとすぐ反映されます。
 
 ## 必要なもの
 
