@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- `cts status` prints how many Claude sessions are waiting, running and done (`◆2 ⠹1 ✓3`) for tmux's `status-right`; `--color` colors each count with the `@cts_color_*` options (#116).
+- `@cts_notify` (`off` by default, `tmux`, `os` or `all`) notifies you when a session starts waiting for you or is done, unless the client you use shows its window: a tmux message and a bell in its window, or a desktop notification with `osascript` / `notify-send`. The hooks read the value from a file the plugin writes when tmux loads it, so reload the config after a change (#116).
+
 ## [0.12.1] - 2026-11-11
 
 ### Changed

@@ -12,6 +12,7 @@ tmux side:
   fix-width [window]         restore the sidebar width after a layout change (tmux hooks)
   popup [pane]               show the list in a popup instead (pane: where it was opened from)
   next|prev [pane] [client]  go to the next / previous done or waiting Claude
+  status [--color]           waiting / running / done counts for status-right (--color: tmux styles)
 
 internal:
   sidebar                    the sidebar pane itself
@@ -48,6 +49,9 @@ pub enum Command {
     PopupUi {
         origin: Option<PaneId>,
     },
+    Status {
+        color: bool,
+    },
     Hook,
     Statusline,
     Version,
@@ -74,6 +78,9 @@ pub fn parse(args: &[String]) -> Option<Command> {
         "prev" => jump(Direction::Prev),
         "sidebar" => Command::Sidebar,
         "popup-ui" => Command::PopupUi { origin: pane(1) },
+        "status" => Command::Status {
+            color: arg(1) == Some("--color"),
+        },
         "hook" => Command::Hook,
         "statusline" => Command::Statusline,
         "--version" | "-V" => Command::Version,
@@ -108,6 +115,15 @@ mod tests {
                 from: PaneId::parse("%1"),
                 client: Some("/dev/ttys001".to_owned())
             })
+        );
+    }
+
+    #[test]
+    fn status_colors_only_when_asked() {
+        assert_eq!(parsed(&["status"]), Some(Command::Status { color: false }));
+        assert_eq!(
+            parsed(&["status", "--color"]),
+            Some(Command::Status { color: true })
         );
     }
 

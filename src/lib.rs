@@ -2,7 +2,7 @@
 //!
 //! Pure modules turn values into values; side effects live at the edges: [`tmux`] (the tmux server),
 //! [`session::store`] (state files), [`process`] (other processes) and the `run` functions of
-//! [`control`], [`hook`], [`jump`] and [`sidebar`].
+//! [`control`], [`hook`], [`jump`], [`status`] and [`sidebar`].
 
 pub mod cli;
 pub mod context;
@@ -11,9 +11,11 @@ pub mod hook;
 pub mod i18n;
 pub mod jump;
 pub mod listing;
+pub mod notify;
 pub mod process;
 pub mod session;
 pub mod sidebar;
+pub mod status;
 pub mod text;
 pub mod tmux;
 
@@ -38,6 +40,7 @@ pub fn run(command: Command, ctx: &Context) -> ExitCode {
             from,
             client,
         } => jump::run(ctx, direction, from, client.as_deref()),
+        Command::Status { color } => status::run(ctx, color),
         Command::Hook => hook::run(ctx, &read_stdin()),
         Command::Statusline => session::statusline::run(ctx, &read_stdin()),
         Command::Version => print_version(),

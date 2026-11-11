@@ -44,6 +44,8 @@ Code layout (`src/`): pure modules turn values into values, and side effects sta
 | `control` | opening / closing sidebars and restoring layouts |
 | `sidebar` | the list UI: `update` is a pure `(model, msg) → (model, effects)` function, `view` renders, `effect` runs effects |
 | `listing`, `jump` | grouping in tmux order, next / previous done or waiting session |
+| `status` | the counts line for `status-right` |
+| `notify` | `@cts_notify`: whether a change is worth notifying and the message (pure), `send` runs it from the hook |
 
 Style rules, enforced by clippy (`Cargo.toml` `[workspace.lints]`, `clippy.toml`) and `cargo xtask ci`: no `unwrap` / `expect` / `panic` / indexing / `as` casts, functions of at most 30 lines, modules of at most 200 lines, and iterator adapters (`map`, `filter`, `fold`) over mutable loops.
 
