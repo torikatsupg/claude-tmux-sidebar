@@ -1,9 +1,8 @@
 use super::place::{Client, Place};
 use super::*;
-use crate::hook::event::Event;
-use crate::hook::transition::{self, Outcome};
+
+mod worth;
 use crate::i18n;
-use crate::session::Record;
 
 #[test]
 fn off_unless_set_to_a_known_mode() {
@@ -21,74 +20,12 @@ fn off_unless_set_to_a_known_mode() {
 }
 
 #[test]
-fn only_a_change_to_waiting_or_done_is_worth_a_notification() {
-    assert!(worth(Some(Status::Running), Status::Waiting));
-    assert!(worth(Some(Status::Running), Status::Done));
-    assert!(worth(Some(Status::Waiting), Status::Done));
-    assert!(worth(None, Status::Waiting));
-    assert!(!worth(Some(Status::Waiting), Status::Waiting));
-    assert!(!worth(Some(Status::Done), Status::Done));
-    assert!(!worth(Some(Status::Waiting), Status::Running));
-    assert!(!worth(Some(Status::Done), Status::Idle));
-}
-
-/// The statuses notified while `events` go through the state machine, as the hook does.
-fn notified(events: &[Event<'_>]) -> Vec<Status> {
-    let (_, sent) = events
-        .iter()
-        .fold(
-            (None::<Record>, Vec::new()),
-            |(prev, sent), event| match transition::next(event, prev.as_ref()) {
-                Outcome::Update(c) => {
-                    let alert = worth(prev.as_ref().map(|r| r.state), c.status).then_some(c.status);
-                    let record = Record {
-                        state: c.status,
-                        detail: c.detail,
-                        background: c.background,
-                        agent: c.agent,
-                        answered: c.answered,
-                        ..prev.unwrap_or_default()
-                    };
-                    (Some(record), [sent, alert.into_iter().collect()].concat())
-                }
-                Outcome::Ignore | Outcome::Remove => (prev, sent),
-            },
-        );
-    sent
-}
-
-const ASK: Event<'static> = Event::PermissionRequest {
-    tool: "Bash",
-    agent: "",
-};
-const POST: Event<'static> = Event::PostToolUse {
-    tool: "Bash",
-    agent: "",
-};
-const PROMPT: Event<'static> = Event::Notification {
-    kind: "permission_prompt",
-    agent: "",
-};
-const STOP: Event<'static> = Event::Stop { busy: None };
-
-#[test]
-fn a_late_or_repeated_prompt_notification_is_not_notified_twice() {
-    assert_eq!(
-        notified(&[Event::UserPromptSubmit, ASK, PROMPT]),
-        [Status::Waiting]
-    );
-    assert_eq!(
-        notified(&[
-            Event::UserPromptSubmit,
-            ASK,
-            POST,
-            PROMPT,
-            STOP,
-            PROMPT,
-            STOP
-        ]),
-        [Status::Waiting, Status::Done]
-    );
+fn reads_the_mode_sidebar_tmux_recorded() -> std::io::Result<()> {
+    let dir = tempfile::tempdir()?;
+    assert_eq!(Mode::read(dir.path()), Mode::Off);
+    fs::write(dir.path().join("notify"), "all\n")?;
+    assert_eq!(Mode::read(dir.path()), Mode::All);
+    Ok(())
 }
 
 fn place(window: &str, windows: u32, zoomed: bool, active: bool) -> Place {
@@ -173,7 +110,7 @@ fn the_os_notification_command_takes_the_message_as_an_argument() {
         args.iter()
             .all(|a| !a.contains("a\"b") || a == "◆ a\"b waiting for you")
     );
-    let (program, args) = os_command("✓ api done", false);
+    let (program, args) = os_command("✓ a<b>&c done", false);
     assert_eq!(program, "notify-send");
-    assert_eq!(args, ["Claude Code", "✓ api done"]);
+    assert_eq!(args, ["Claude Code", "✓ a&lt;b&gt;&amp;c done"]);
 }

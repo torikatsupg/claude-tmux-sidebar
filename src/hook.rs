@@ -32,7 +32,8 @@ fn handle(ctx: &Context, input: &str) -> io::Result<()> {
         return Ok(());
     }
     let prev = store::read(&ctx.state_dir, &payload.session_id);
-    match transition::next(&Event::of(&payload), prev.as_ref()) {
+    let event = Event::of(&payload);
+    match transition::next(&event, prev.as_ref()) {
         Outcome::Ignore => Ok(()),
         Outcome::Remove => {
             store::remove_session(&store::path(&ctx.state_dir, &payload.session_id));
@@ -42,7 +43,8 @@ fn handle(ctx: &Context, input: &str) -> io::Result<()> {
             let origin = Origin::current(ctx, prev.as_ref());
             let record = compose(&payload, prev.as_ref(), change, &origin);
             store::write(&ctx.state_dir, &record)?;
-            notify::send::run(ctx, prev.map(|r| r.state), &record);
+            let by_notification = matches!(event, Event::Notification { .. });
+            notify::send::run(ctx, prev.as_ref(), &record, by_notification);
             Ok(())
         }
     }

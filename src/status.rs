@@ -4,6 +4,7 @@ use std::io::{self, Write};
 
 use crate::context::Context;
 use crate::session::{Status, live};
+use crate::sidebar::theme;
 use crate::tmux;
 
 pub const WAITING_MARK: &str = "◆";
@@ -59,14 +60,13 @@ impl Default for Colors {
 }
 
 impl Colors {
-    /// The options looked up with `option`; an unset one, or one that would break the style, keeps its default.
+    /// The options looked up with `option`; an unset one, or one the sidebar would not take either (it
+    /// could break the style), keeps its default.
     pub fn from_options(option: impl Fn(&str) -> Option<String>) -> Self {
         let pick = |role: &str, default: String| {
             option(&format!("@cts_color_{role}"))
                 .map(|v| v.trim().to_owned())
-                .filter(|v| {
-                    !v.is_empty() && v.chars().all(|c| c.is_ascii_alphanumeric() || c == '#')
-                })
+                .filter(|v| theme::color(v).is_some())
                 .unwrap_or(default)
         };
         let d = Self::default();

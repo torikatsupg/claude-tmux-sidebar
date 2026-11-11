@@ -6,7 +6,7 @@ use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-use super::Record;
+use super::{Record, Status};
 
 const PRIVATE_DIR: u32 = 0o700;
 const PRIVATE_FILE: u32 = 0o600;
@@ -131,6 +131,43 @@ pub fn sweep_windows(dir: &Path) {
 pub fn remove_session(state_file: &Path) {
     remove(state_file);
     remove(&window_path(state_file));
+    for status in ALERTS {
+        remove(&alert_path(state_file, status));
+    }
+}
+
+/// The statuses a session is notified about, each with its own marker file.
+const ALERTS: [Status; 2] = [Status::Waiting, Status::Done];
+
+/// The marker that the session has been notified about its current `status`.
+fn alert_path(state_file: &Path, status: Status) -> PathBuf {
+    let name = if status == Status::Waiting {
+        "waiting"
+    } else {
+        "done"
+    };
+    state_file.with_extension(name)
+}
+
+/// Claims the notification for the session's change to `status`: only the first hook to create the
+/// marker gets `true`, so hooks running at once notify once.
+pub fn claim_alert(dir: &Path, session_id: &str, status: Status) -> bool {
+    OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(PRIVATE_FILE)
+        .open(alert_path(&path(dir, session_id), status))
+        .is_ok()
+}
+
+/// Drops the markers of the statuses the session is no longer in, so that its next change to one of
+/// them is notified again.
+pub fn clear_alerts(dir: &Path, session_id: &str, status: Status) {
+    let state_file = path(dir, session_id);
+    ALERTS
+        .iter()
+        .filter(|&&s| s != status)
+        .for_each(|&s| remove(&alert_path(&state_file, s)));
 }
 
 /// Removes a file, ignoring one that is already gone.

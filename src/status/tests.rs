@@ -47,6 +47,10 @@ fn colors_each_count_with_a_tmux_style() {
 
 #[test]
 fn a_color_that_would_break_the_style_keeps_its_default() {
-    let colors = Colors::from_options(|_| Some("red]#[bg=blue".to_owned()));
-    assert_eq!(colors, Colors::default());
+    for value in ["red]#[bg=blue", "lightred", "#12", "coral"] {
+        let colors = Colors::from_options(|_| Some(value.to_owned()));
+        assert_eq!(colors, Colors::default(), "{value}");
+    }
+    let colors = Colors::from_options(|_| Some("brightRed".to_owned()));
+    assert_eq!(colors.done, "brightRed");
 }

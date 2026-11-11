@@ -96,9 +96,9 @@ Each color has its own option and takes one of these forms of a tmux color: a na
 | `@cts_color_active` | the background of the rows of the window you are in | `colour235` |
 | `@cts_color_muted` | secondary text: branch, prompt, help labels | `colour245` |
 | `@cts_color_dim` | faint text: separator line, idle mark | `brightblack` |
-| `@cts_color_waiting` | the waiting mark | `yellow` |
-| `@cts_color_running` | the running mark | `green` |
-| `@cts_color_done` | the done mark | `cyan` |
+| `@cts_color_waiting` | the waiting mark, also in `cts status --color` | `yellow` |
+| `@cts_color_running` | the running mark, also in `cts status --color` | `green` |
+| `@cts_color_done` | the done mark, also in `cts status --color` | `cyan` |
 | `@cts_color_warning` | context window usage from 50% | `yellow` |
 | `@cts_color_critical` | context window usage from 80% | `red` |
 
@@ -122,7 +122,7 @@ set -g status-right '#(~/.tmux/plugins/claude-tmux-sidebar/bin/cts status) %H:%M
 set -g status-interval 5   # how often tmux reruns it, in seconds (default 15)
 ```
 
-To color it, wrap it in a tmux style, or add `--color` to color each count with `@cts_color_waiting`, `@cts_color_running` and `@cts_color_done` (yellow, green and cyan by default). Each colored count ends with `#[fg=default]`.
+To color it, wrap it in a tmux style, or add `--color` to color each count with `@cts_color_waiting`, `@cts_color_running` and `@cts_color_done` (yellow, green and cyan by default). Each colored count ends with `#[fg=default]`. These options take the same colors as in the sidebar, and an unrecognized value keeps the default.
 
 ```tmux
 set -g status-right '#[fg=yellow]#(~/.tmux/plugins/claude-tmux-sidebar/bin/cts status)#[default] %H:%M'
@@ -134,11 +134,13 @@ set -g status-right '#(~/.tmux/plugins/claude-tmux-sidebar/bin/cts status --colo
 | Value | Notification |
 |---|---|
 | `off` (default) | none |
-| `tmux` | a message with the tmux session and the status on the client you use, and a bell in the session's window |
+| `tmux` | a message such as `◆ api:2 waiting for you` on the client you use (the tmux session, with the window index when it has several windows, and the status), and a bell in the session's window |
 | `os` | a desktop notification, with `osascript` on macOS or `notify-send` on Linux; nothing when the command is missing |
 | `all` | both |
 
-There is no notification when the client you used last shows the session's window, for a session that already had that status, or for a prompt notification that arrives after you answered it. Only sessions running in tmux are notified. The option is read on each change, so a new value takes effect right away.
+There is no notification when the client you used last shows the session's window, unless that window is zoomed into another pane. A session that already had the status is not notified again. Claude Code sends its own prompt notification about six seconds after a prompt opens, so it can arrive after you answered; one that arrives within five seconds of the session's previous hook is not notified. Only sessions running in tmux are notified.
+
+The hooks read the value from `~/.cache/claude-tmux-sidebar/notify`, which the plugin writes when tmux loads it, so that a hook never waits on tmux. After changing `@cts_notify`, reload the config with `tmux source ~/.tmux.conf`.
 
 ## Requirements
 

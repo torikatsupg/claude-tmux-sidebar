@@ -69,3 +69,19 @@ fn an_unusable_window_size_counts_as_none() -> io::Result<()> {
     assert_eq!(read_window(dir.path(), "missing"), None);
     Ok(())
 }
+
+#[test]
+fn only_the_first_claim_of_a_status_wins_until_the_session_leaves_it() -> io::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let state = dir.path();
+    assert!(claim_alert(state, "s1", Status::Waiting));
+    assert!(!claim_alert(state, "s1", Status::Waiting));
+    clear_alerts(state, "s1", Status::Waiting);
+    assert!(!claim_alert(state, "s1", Status::Waiting));
+    assert!(claim_alert(state, "s1", Status::Done));
+    clear_alerts(state, "s1", Status::Running);
+    assert!(claim_alert(state, "s1", Status::Waiting));
+    remove_session(&path(state, "s1"));
+    assert_eq!(fs::read_dir(state)?.count(), 0);
+    Ok(())
+}

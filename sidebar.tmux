@@ -18,6 +18,10 @@ opt() {
   echo "${v:-$2}"
 }
 
+# The hooks read @cts_notify from the state directory, so that they never wait on tmux.
+state_dir=${CTS_STATE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/claude-tmux-sidebar}
+(umask 077 && mkdir -p "$state_dir" && opt @cts_notify off >"$state_dir/notify") 2>/dev/null
+
 # Installs or updates the binary in the background; bin/cts waits for it when it is still missing.
 tmux run-shell -b "'$FETCH' >/dev/null 2>&1"
 

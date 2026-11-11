@@ -2,28 +2,35 @@
 
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::os::unix::fs::OpenOptionsExt;
 use std::process::{Command, Stdio};
 
 use super::place::{self, CLIENT_FORMAT, PLACE_FORMAT, Place};
-use super::{Mode, OPTION, os_command, text, tmux_text, worth};
+use super::{Mode, os_command, text, tmux_text, worth};
 use crate::context::Context;
 use crate::i18n;
-use crate::session::{Record, Status};
+use crate::session::{Record, store};
 use crate::tmux;
 
 const BELL: &[u8] = b"\x07";
 
+/// Opening the pane's tty must not make it this process's controlling terminal.
+#[cfg(target_os = "macos")]
+const O_NOCTTY: i32 = 0x2_0000;
+#[cfg(target_os = "linux")]
+const O_NOCTTY: i32 = 0o400;
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+const O_NOCTTY: i32 = 0;
+
 /// Notifies about the hook's change from `prev` to `record`, unless the user already looks at its pane.
-/// Nothing touches tmux before the change is known to be worth it, so `off` costs nothing.
-pub fn run(ctx: &Context, prev: Option<Status>, record: &Record) {
-    if !worth(prev, record.state) {
-        return;
-    }
-    let Some(pane) = ctx.pane else {
+/// The mode comes from a file, so with `off` the hook never calls tmux.
+pub fn run(ctx: &Context, prev: Option<&Record>, record: &Record, by_notification: bool) {
+    store::clear_alerts(&ctx.state_dir, &record.session_id, record.state);
+    let Some(pane) = ctx.pane.filter(|_| worth(prev, record, by_notification)) else {
         return;
     };
-    let mode = Mode::parse(tmux::global_option(OPTION).as_deref());
-    if mode == Mode::Off {
+    let mode = Mode::read(&ctx.state_dir);
+    if mode == Mode::Off || !store::claim_alert(&ctx.state_dir, &record.session_id, record.state) {
         return;
     }
     let Some(place) = place::parse_place(&tmux::display(&pane.to_string(), PLACE_FORMAT)) else {
@@ -50,6 +57,7 @@ fn ring(place: &Place) {
     if place.tty.starts_with("/dev/") {
         let _ = OpenOptions::new()
             .write(true)
+            .custom_flags(O_NOCTTY)
             .open(&place.tty)
             .and_then(|mut tty| tty.write_all(BELL));
     }
