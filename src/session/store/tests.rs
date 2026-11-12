@@ -85,3 +85,18 @@ fn only_the_first_claim_of_a_status_wins_until_the_session_leaves_it() -> io::Re
     assert_eq!(fs::read_dir(state)?.count(), 0);
     Ok(())
 }
+
+#[test]
+fn removing_a_session_removes_its_lock() -> io::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let state = dir.path();
+    let record = Record {
+        session_id: "s1".to_owned(),
+        ..Record::default()
+    };
+    write(state, &record)?;
+    fs::write(state.join("s1.lock"), "1 2")?;
+    remove_session(&path(state, "s1"));
+    assert_eq!(fs::read_dir(state)?.count(), 0);
+    Ok(())
+}

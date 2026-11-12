@@ -49,9 +49,18 @@ Each session shows its directory and git branch, with the tool in use and how lo
 | `j` / `k` / `g` / `G` | Move the selection |
 | `n` / `p` | Select the next / previous done or waiting Claude |
 | `Enter` / click | Go to that pane (or that window or tmux session, on a window or session row) |
+| `Space` | With `@cts_preview popup`, show the selected pane in a popup (`Escape` closes it). The default key; set another with `@cts_preview_key` |
 | `q` | Close |
 
 Sessions, windows and panes are listed in tmux's own order. The selection follows the pane you are focused on.
+
+While the sidebar has the focus, a panel below the list shows the selected session, so you can see what it needs before you go there. The rule above it names the row (`session/name`) in the color of tmux's `pane-border-style`. What the panel shows depends on the status:
+
+- ◆ waiting for you: what Claude asks for, wrapped (`Bash: <command>`, `Edit: <file>`, or the question of `AskUserQuestion`), read from the session's transcript. The rows below follow when there is room.
+- ⠹ running: the tool in use and its main input, then the subagents (type, description, how long they have run) and the background tasks (shells, monitors, …) still running. When the panel is short, rows go from the bottom and only the counts (`agents 2`) stay.
+- ✓ done / ○ idle: the end of Claude's last reply (code fences and heading marks dropped), any background work still running, and on the last line the working tree's changes, `± +128 -14 (3 files)` (`git diff --shortstat HEAD`, so untracked files are not counted). Monitors are left out here, since some wait for events forever, and the reply keeps at least its last two lines. The summary says `shared` when another Claude session works in the same repository (the same top directory by `git rev-parse --show-toplevel`, or the same directory outside a repository), since the changes are not only this session's. A worktree, such as Claude Code's `--worktree`, counts as its own repository.
+
+For a window without Claude, the panel shows the command running in it, its directory, branch and changes. Lines with nothing to show are left out. Without the focus, the selection follows the pane you are in, so the list takes the full height as before. The panel follows the cursor and refreshes with the list; `git` runs at most every 10 seconds, and right away for a new directory. It takes at most a third of the sidebar (10 lines), and none when the sidebar is too short; the list scrolls above it. While a session waits for you, its second row in the list shows what it asks for in place of your last prompt.
 
 ## Options
 
@@ -66,6 +75,8 @@ set -g @cts_prev_key C-p
 set -g @cts_default off       # open the sidebar when tmux starts
 set -g @cts_lang en           # en / ja
 set -g @cts_help on           # show the key help at the bottom
+set -g @cts_preview pane      # preview the selected pane: pane (below the list) / popup (on a key) / off
+set -g @cts_preview_key Space # the key for popup: Space or one character not used by the list
 set -g @cts_label auto        # rows: auto (sessions > windows > Claude) / dir (flat) / window (#I:#W)
 set -g @cts_single_window inline  # with auto, a named window alone in its session: inline / lines
 set -g @cts_all_windows off   # also list windows without Claude
@@ -78,6 +89,8 @@ set -g @cts_context_windows 'claude-opus-5-5=1000000'  # context window size per
 ```
 
 Avoid keys tmux already binds (e.g. `C-b` is `send-prefix`): the plugin's binding replaces them.
+
+With `@cts_preview popup`, the preview is not drawn under the list; the key shows the selected pane's screen, with its colors, in a tmux popup instead, and the key help lists it. In the list popup (`prefix + B`), where tmux cannot open a second popup, `popup` shows the preview under the list. `@cts_preview off` draws the sidebar as before. A `@cts_preview_key` that is one of the list's keys (`j`, `k`, `g`, `G`, `n`, `p`, `l`, `q`, `r`) is ignored in favor of `Space`, and the key opens nothing when pressed with `Ctrl` or `Alt`. The sidebar reads these options when it opens.
 
 With `@cts_label window`, each row shows its tmux window as `index:name` instead of the directory and branch, and follows a renamed window on the next refresh. Sessions outside tmux keep the directory.
 
@@ -181,7 +194,7 @@ Restart running Claude Code sessions to pick up the hooks.
 
 ## Privacy
 
-Everything stays on your machine. Each Claude session's status is kept in `~/.cache/claude-tmux-sidebar/<session_id>.json`, readable only by you and removed when the session ends. It holds the session ID, working directory, tool name, tmux pane, Claude's process ID, the path of the session's transcript and the first 200 characters of your last prompt. The sidebar reads the git branch and context usage from the end of that transcript and does not store them.
+Everything stays on your machine. Each Claude session's status is kept in `~/.cache/claude-tmux-sidebar/<session_id>.json`, readable only by you and removed when the session ends. It holds the session ID, working directory, tool name, tmux pane, Claude's process ID, the path of the session's transcript and the first 200 characters of your last prompt. It also holds the subagents and background tasks still running, with their descriptions or commands. The sidebar reads the git branch, context usage and, for the preview, Claude's last reply and pending tool call from the end of that transcript, and does not store them; for the branch and change summary it runs `git rev-parse --abbrev-ref HEAD` and `git diff --shortstat HEAD` in the directory of the selected session or window, and `git rev-parse --show-toplevel` in the other sessions' directories to tell whether they share a repository.
 
 For debugging, start Claude with `CTS_DEBUG=1` to append raw hook payloads to `~/.cache/claude-tmux-sidebar/debug.log`. **The log contains your prompts and tool inputs** — delete it when done and check it before sharing.
 

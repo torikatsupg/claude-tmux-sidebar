@@ -2,6 +2,9 @@
 //! window (unknown right after a compaction).
 
 pub mod cache;
+mod said;
+
+pub use said::{Ask, Said};
 
 use std::fs::File;
 use std::io::{self, Read, Seek, SeekFrom};
@@ -13,11 +16,13 @@ use serde::Deserialize;
 const TAIL_BYTES: u64 = 256 * 1024;
 
 /// The latest state of a session, as of its last assistant entry or compaction.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Latest {
     pub branch: String,
     /// `None` after a compaction until the next assistant entry.
     pub usage: Option<Usage>,
+    /// What Claude said last; filled by [`read`], left empty by [`latest`].
+    pub said: Said,
 }
 
 /// The tokens in the context window and the model they were sent to.
@@ -65,7 +70,11 @@ struct TokenCounts {
 
 /// Reads the end of the transcript at `path`; `None` when it is missing or has no assistant entry or compaction yet.
 pub fn read(path: &Path) -> Option<Latest> {
-    tail(path).ok().as_deref().and_then(latest)
+    let text = tail(path).ok()?;
+    latest(&text).map(|l| Latest {
+        said: said::said(&text),
+        ..l
+    })
 }
 
 fn tail(path: &Path) -> io::Result<String> {
@@ -88,7 +97,7 @@ pub fn latest(text: &str) -> Option<Latest> {
         .find_map(|entry| match entry.kind.as_str() {
             "system" if entry.subtype == "compact_boundary" => Some(Latest {
                 branch: entry.branch,
-                usage: None,
+                ..Latest::default()
             }),
             "assistant" => {
                 let message = entry.message?;
@@ -102,6 +111,7 @@ pub fn latest(text: &str) -> Option<Latest> {
                 Some(Latest {
                     branch: entry.branch,
                     usage: Some(Usage { tokens, model }),
+                    said: Said::default(),
                 })
             }
             _ => None,

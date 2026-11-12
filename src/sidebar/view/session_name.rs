@@ -36,7 +36,7 @@ fn branch(branch: &str, room: usize) -> String {
 
 /// `window:directory` when the tmux session has several windows and `numbered`, otherwise just the
 /// directory.
-fn name(claude: &Claude, numbered: bool) -> String {
+pub(super) fn name(claude: &Claude, numbered: bool) -> String {
     let dir = std::path::Path::new(&claude.record.cwd)
         .file_name()
         .map_or_else(|| "?".to_owned(), |d| d.to_string_lossy().into_owned());

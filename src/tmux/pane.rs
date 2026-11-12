@@ -3,11 +3,11 @@
 use std::fmt;
 
 /// A pane id such as `%12`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PaneId(u32);
 
 /// A window id such as `@3`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct WindowId(u32);
 
 impl PaneId {
@@ -35,7 +35,7 @@ impl fmt::Display for WindowId {
 }
 
 /// One pane of the tmux server.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[allow(clippy::struct_excessive_bools)] // mirrors tmux's own flags
 pub struct Pane {
     pub id: PaneId,
@@ -52,11 +52,18 @@ pub struct Pane {
     pub active: bool,
     pub last: bool,
     pub window_active: bool,
+    /// A client shows the pane's session.
+    pub attached: bool,
+    /// What runs in the pane (`#{pane_current_command}`).
+    pub command: String,
+    /// Where it runs (`#{pane_current_path}`).
+    pub path: String,
 }
 
-/// The `list-panes -F` format that [`parse`] reads.
+/// The `list-panes -F` format that [`parse`] reads. A tab or newline in the command or directory would
+/// split the fields or the line, so tmux turns them into spaces (`s/[TAB LF]/ /`).
 pub const FORMAT: &str = "#{pane_id}\t#{session_name}\t#{window_index}\t#{pane_index}\t#{window_id}\t\
-                          #{@cts_sidebar}\t#{pane_active}\t#{pane_last}\t#{window_active}\t#{session_windows}\t#{automatic-rename}\t#{window_name}";
+                          #{@cts_sidebar}\t#{pane_active}\t#{pane_last}\t#{window_active}\t#{session_windows}\t#{session_attached}\t#{s/[\t\n]/ /:pane_current_command}\t#{s/[\t\n]/ /:pane_current_path}\t#{automatic-rename}\t#{window_name}";
 
 /// Parses `list-panes -F FORMAT` output, skipping malformed lines.
 pub fn parse(output: &str) -> Vec<Pane> {
@@ -65,13 +72,24 @@ pub fn parse(output: &str) -> Vec<Pane> {
 
 fn parse_line(line: &str) -> Option<Pane> {
     // The window name is last and takes the rest of the line, because a name may contain a tab.
-    let fields: Vec<&str> = line.splitn(12, '\t').collect();
-    let [fields @ .., automatic_rename, window_name] = fields.as_slice() else {
+    let fields: Vec<&str> = line.splitn(15, '\t').collect();
+    let [
+        fields @ ..,
+        attached,
+        command,
+        path,
+        automatic_rename,
+        window_name,
+    ] = fields.as_slice()
+    else {
         return None;
     };
     Some(Pane {
         window_name: (*window_name).to_owned(),
         window_named: *automatic_rename == "0",
+        attached: *attached != "0",
+        command: (*command).to_owned(),
+        path: (*path).to_owned(),
         ..parse_fields(fields)?
     })
 }
@@ -97,8 +115,6 @@ fn parse_fields(fields: &[&str]) -> Option<Pane> {
         id: PaneId::parse(id)?,
         session: (*session).to_owned(),
         window_index: window_index.parse().ok()?,
-        window_name: String::new(),
-        window_named: false,
         pane_index: pane_index.parse().ok()?,
         session_windows: session_windows.parse().ok()?,
         window_id: WindowId::parse(window_id)?,
@@ -106,6 +122,7 @@ fn parse_fields(fields: &[&str]) -> Option<Pane> {
         active: *active == "1",
         last: *last == "1",
         window_active: *window_active == "1",
+        ..Pane::default()
     })
 }
 
@@ -146,6 +163,9 @@ pub mod fixture {
             active: false,
             last: false,
             window_active: true,
+            attached: true,
+            command: String::new(),
+            path: String::new(),
         }
     }
 }

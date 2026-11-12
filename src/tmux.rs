@@ -19,6 +19,20 @@ pub fn output(args: &[&str]) -> String {
         .unwrap_or_default()
 }
 
+/// Starts `tmux ARGS` without waiting for it, for commands that last as long as the user looks.
+pub fn spawn(args: &[&str]) {
+    let child = Command::new("tmux")
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn();
+    if let Ok(mut child) = child {
+        // Reaped on its own thread so that a finished child leaves no zombie behind.
+        std::thread::spawn(move || child.wait());
+    }
+}
+
 /// Runs `tmux ARGS`, reporting whether it succeeded.
 pub fn run(args: &[&str]) -> bool {
     Command::new("tmux")
@@ -45,6 +59,11 @@ pub fn current_window() -> Option<WindowId> {
 /// A global option, `None` when unset or empty.
 pub fn global_option(name: &str) -> Option<String> {
     non_empty(&output(&["show", "-gqv", name]))
+}
+
+/// A global window option, `None` when unset or empty.
+pub fn global_window_option(name: &str) -> Option<String> {
+    non_empty(&output(&["show", "-gwqv", name]))
 }
 
 /// A window option, `None` when unset or empty.
@@ -102,4 +121,23 @@ pub fn message(client: Option<&str>, text: &str) {
         .chain([text])
         .collect();
     run(&args);
+}
+
+/// The visible text of a pane, with its colors, in a popup of `width` × `height`; `Escape` closes it.
+pub fn preview_popup(pane: PaneId, width: &str, height: &str) {
+    let target = pane.to_string();
+    // `$(…)` drops the last newline, which would scroll the first line out of a popup as tall as the pane.
+    let command = format!("printf '%s' \"$(tmux capture-pane -p -e -t '{target}')\"");
+    spawn(&[
+        "display-popup",
+        "-t",
+        &target,
+        "-w",
+        width,
+        "-h",
+        height,
+        "-T",
+        " #{session_name}:#{window_index}.#{pane_index} ",
+        &command,
+    ]);
 }

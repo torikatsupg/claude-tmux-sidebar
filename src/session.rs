@@ -2,6 +2,7 @@
 
 pub mod context_window;
 pub mod live;
+pub mod lock;
 pub mod statusline;
 pub mod store;
 pub mod transcript;
@@ -69,9 +70,34 @@ pub struct Record {
     /// The context usage a hook before 0.7.4 wrote; used only while there is no `transcript`.
     #[serde(default, skip_serializing)]
     pub context: Option<u8>,
+    /// The subagents and background tasks still running, as far as the hooks know. Older hooks leave it out.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tasks: Vec<Task>,
     /// The context window size from the status line; kept in its own file, see [`store::write_window`].
     #[serde(skip)]
     pub context_window: Option<u64>,
+}
+
+/// A subagent or background task of a session.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Task {
+    #[serde(default)]
+    pub id: String,
+    /// `subagent`, `shell`, `monitor`, … as Claude Code names it.
+    #[serde(default)]
+    pub kind: String,
+    /// A subagent's type, such as `Explore`.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub agent: String,
+    /// What it does: a subagent's description, a shell's command, or the task's description.
+    #[serde(default)]
+    pub text: String,
+    /// When it started, in seconds since the epoch.
+    #[serde(default)]
+    pub since: u64,
+    /// A subagent the main thread waits on, under its tool call id; it ends with the turn.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub foreground: bool,
 }
 
 impl Record {

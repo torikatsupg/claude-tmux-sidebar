@@ -2,10 +2,12 @@
 //! reads input, applies the pure [`update`](update::update) and runs the resulting effects.
 
 mod effect;
+mod env;
 pub mod headings;
 pub mod indent;
 mod input;
 pub mod label;
+pub mod preview;
 pub mod rows;
 pub mod selection;
 pub mod snapshot;
@@ -18,16 +20,17 @@ use std::ops::ControlFlow;
 use std::time::{Duration, Instant, SystemTime};
 
 use ratatui::DefaultTerminal;
-use ratatui::crossterm::event::{self, DisableMouseCapture, EnableMouseCapture};
+use ratatui::crossterm::event::{
+    self, DisableFocusChange, DisableMouseCapture, EnableFocusChange, EnableMouseCapture,
+};
 use ratatui::crossterm::execute;
 
-use self::{effect::Next, indent::Indent, label::Label, theme::Theme};
+use self::{effect::Next, env::Env};
 use crate::context::{self, Context};
-use crate::i18n::{self, Messages};
 use crate::session::store;
 use crate::session::transcript::cache::Transcripts;
-use crate::tmux::{self, pane::PaneId};
-use update::{Model, Msg};
+use crate::tmux::pane::PaneId;
+use update::{Effect, Model, Msg};
 
 /// Input wait per step; also the spinner speed.
 const FRAME: Duration = Duration::from_millis(150);
@@ -43,18 +46,6 @@ pub enum Mode {
     Popup { origin: Option<PaneId> },
 }
 
-/// Everything a step needs that never changes.
-struct Env<'a> {
-    ctx: &'a Context,
-    scope: snapshot::Scope,
-    help: bool,
-    indent: Indent,
-    theme: Theme,
-    messages: &'static Messages,
-    /// The spinner runs on the clock, not on the number of events.
-    started: Instant,
-}
-
 /// The loop state carried from step to step.
 struct Loop {
     model: Model,
@@ -64,29 +55,11 @@ struct Loop {
 }
 
 pub fn run(ctx: &Context, mode: Mode) -> io::Result<()> {
-    let (me, popup) = match mode {
-        Mode::Sidebar => (ctx.pane, false),
-        Mode::Popup { origin } => (origin, true),
-    };
-    let lang = tmux::global_option("@cts_lang");
-    let env = Env {
-        ctx,
-        scope: snapshot::Scope {
-            me,
-            popup,
-            all_windows: tmux::global_option("@cts_all_windows").as_deref() == Some("on"),
-            label: Label::from_options(tmux::global_option),
-        },
-        help: tmux::global_option("@cts_help").as_deref() != Some("off"),
-        indent: Indent::from_options(tmux::global_option),
-        theme: Theme::from_options(tmux::global_option),
-        messages: i18n::messages(lang.as_deref()),
-        started: Instant::now(),
-    };
+    let env = Env::new(ctx, mode);
     ratatui::run(|terminal| {
-        execute!(io::stdout(), EnableMouseCapture)?;
+        execute!(io::stdout(), EnableMouseCapture, EnableFocusChange)?;
         let result = event_loop(terminal, &env);
-        execute!(io::stdout(), DisableMouseCapture)?;
+        execute!(io::stdout(), DisableMouseCapture, DisableFocusChange)?;
         result
     })
 }
@@ -101,6 +74,8 @@ fn event_loop(terminal: &mut DefaultTerminal, env: &Env<'_>) -> io::Result<()> {
         label: env.scope.label,
         indent: env.indent,
         theme: env.theme,
+        preview: env.preview,
+        home: env.home.clone(),
         height,
         now: context::now(),
         ..Model::default()
@@ -122,8 +97,13 @@ fn steps(terminal: &mut DefaultTerminal, env: &Env<'_>, start: Loop) -> Flow<Loo
 /// Draws, waits briefly for input, applies the messages, and reloads when due.
 fn step(terminal: &mut DefaultTerminal, env: &Env<'_>, state: Loop) -> Flow<Loop> {
     io_flow(terminal.draw(|frame| view::render(&state.model, env.messages, frame)))?;
-    let input = io_flow(read_input(env.scope.popup))?;
-    let messages = input.into_iter().chain([tick(env.started)]).collect();
+    let input = io_flow(read_input(env))?;
+    let answers = env.answered.try_iter();
+    let messages = input
+        .into_iter()
+        .chain(answers)
+        .chain([tick(env.started)])
+        .collect();
     let (state, forced) = apply(env, state, messages)?;
     if forced || due(env, &state) {
         reload(env, state)
@@ -144,9 +124,10 @@ fn io_flow<T>(result: io::Result<T>) -> Flow<T> {
     result.map_or_else(|e| ControlFlow::Break(Err(e)), ControlFlow::Continue)
 }
 
-fn read_input(popup: bool) -> io::Result<Vec<Msg>> {
+fn read_input(env: &Env<'_>) -> io::Result<Vec<Msg>> {
     if event::poll(FRAME)? {
-        Ok(input::message(&event::read()?, popup).into_iter().collect())
+        let message = input::message(&event::read()?, env.scope.popup, env.popup_key());
+        Ok(message.into_iter().collect())
     } else {
         Ok(Vec::new())
     }
@@ -154,29 +135,22 @@ fn read_input(popup: bool) -> io::Result<Vec<Msg>> {
 
 /// Folds the messages through `update`, then runs the effects. The flag asks for a reload.
 fn apply(env: &Env<'_>, state: Loop, messages: Vec<Msg>) -> Flow<(Loop, bool)> {
-    let Loop {
-        model,
-        loaded_at,
-        mtime,
-        transcripts,
-    } = state;
-    let (model, effects) = messages
-        .into_iter()
-        .fold((model, Vec::new()), |(model, done), msg| {
-            let (model, effects) = update::update(model, msg);
-            (model, done.into_iter().chain(effects).collect())
-        });
-    match effect::perform(env.ctx, env.scope.me, &effects) {
+    let (model, effects) =
+        messages
+            .into_iter()
+            .fold((state.model, Vec::new()), |(model, done), msg| {
+                let (model, effects) = update::update(model, msg);
+                (model, done.into_iter().chain(effects).collect())
+            });
+    let (model, reload) = settle(env, model, &effects)?;
+    ControlFlow::Continue((Loop { model, ..state }, reload))
+}
+
+/// Runs the effects. The flag asks for a reload.
+fn settle(env: &Env<'_>, model: Model, effects: &[Effect]) -> Flow<(Model, bool)> {
+    match effect::perform(env.ctx, env.scope.me, &env.git, effects) {
         Next::Stop => ControlFlow::Break(Ok(())),
-        Next::Continue { reload } => ControlFlow::Continue((
-            Loop {
-                model,
-                loaded_at,
-                mtime,
-                transcripts,
-            },
-            reload,
-        )),
+        Next::Continue { reload } => ControlFlow::Continue((model, reload)),
     }
 }
 
@@ -188,13 +162,11 @@ fn reload(env: &Env<'_>, state: Loop) -> Flow<Loop> {
     let (snapshot, transcripts) = snapshot::load(env.ctx, &env.scope, state.transcripts);
     let mtime = store::mtime(&env.ctx.state_dir);
     let (model, effects) = update::update(state.model, Msg::Loaded(snapshot));
-    match effect::perform(env.ctx, env.scope.me, &effects) {
-        Next::Stop => ControlFlow::Break(Ok(())),
-        Next::Continue { .. } => ControlFlow::Continue(Loop {
-            model,
-            loaded_at: Instant::now(),
-            mtime,
-            transcripts,
-        }),
-    }
+    let (model, _) = settle(env, model, &effects)?;
+    ControlFlow::Continue(Loop {
+        model,
+        loaded_at: Instant::now(),
+        mtime,
+        transcripts,
+    })
 }

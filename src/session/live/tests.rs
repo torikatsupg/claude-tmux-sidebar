@@ -114,6 +114,7 @@ fn prefers_the_transcript_to_the_old_branch_and_context() {
     let latest = Latest {
         branch: "new".to_owned(),
         usage: None,
+        ..Latest::default()
     };
     let windows = ContextWindows::default();
     let compacted = claude(record.clone(), Some(latest));
@@ -141,6 +142,7 @@ fn the_transcript_usage_is_measured_against_the_configured_window() {
             tokens: 100_000,
             model: "claude-opus-4-6".to_owned(),
         }),
+        ..Latest::default()
     };
     let claude = claude(Record::default(), Some(latest));
     let windows = ContextWindows::parse("claude-opus-4-6=1000000");
@@ -161,6 +163,7 @@ fn using(tokens: u64, context_window: Option<u64>) -> Claude {
                 tokens,
                 model: "claude-opus-4-6".to_owned(),
             }),
+            ..Latest::default()
         }),
     }
 }

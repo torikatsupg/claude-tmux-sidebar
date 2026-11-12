@@ -1,10 +1,18 @@
 //! The sidebar as a pure state machine: `update(model, msg)` returns the next model and the effects to run.
 
+mod activate;
+mod layout;
+mod preview;
+
+use std::collections::BTreeMap;
+
+use super::preview::{Git, GitAsk, GitRead, Preview};
 use super::rows::{self, Row, RowKey};
 use super::selection::{self, Selection};
 use super::snapshot::Snapshot;
 use crate::jump::Direction;
-use crate::tmux::pane::{PaneId, WindowId};
+use crate::tmux::pane::PaneId;
+use activate::activate;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Model {
@@ -21,13 +29,13 @@ pub struct Model {
     pub label: super::label::Label,
     pub indent: super::indent::Indent,
     pub theme: super::theme::Theme,
-}
-
-impl Model {
-    /// The screen line below the list: the help line, or the bottom edge when the help is hidden.
-    pub fn list_end(&self, height: u16) -> u16 {
-        height.saturating_sub(u16::from(self.help))
-    }
+    pub preview: Preview,
+    /// What `git` said about the preview's directory; shown only while it is still that directory.
+    pub git: Option<Git>,
+    /// The repository top directory of each session directory git was asked about; empty outside one.
+    pub tops: BTreeMap<String, String>,
+    /// `$HOME`, written as `~` in the preview.
+    pub home: String,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -37,6 +45,7 @@ pub enum Msg {
     Resized { height: u16 },
     Clicked { y: u16 },
     Action(Action),
+    Git(GitRead),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -48,6 +57,8 @@ pub enum Action {
     Activate,
     Quit,
     Reload,
+    /// Open the cursor row's pane in a popup (`@cts_preview popup`).
+    Preview,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -64,6 +75,10 @@ pub enum Effect {
     KillSelf,
     Reload,
     Exit,
+    /// Read the branch and change summary of a directory; answered with [`Msg::Git`].
+    Git(GitAsk),
+    /// Show the tail of a pane in a tmux popup.
+    PreviewPopup(PaneId),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -77,17 +92,7 @@ pub fn update(model: Model, msg: Msg) -> (Model, Vec<Effect>) {
         Msg::Loaded(snapshot) if snapshot.redundant => {
             (model, vec![Effect::KillSelf, Effect::Exit])
         }
-        Msg::Loaded(snapshot) => {
-            let selection = selection::follow(model.selection.clone(), &snapshot, model.popup);
-            (
-                Model {
-                    snapshot,
-                    selection,
-                    ..model
-                },
-                vec![],
-            )
-        }
+        Msg::Loaded(snapshot) => loaded(model, snapshot),
         Msg::Tick { now, frame } => (
             Model {
                 frame,
@@ -99,7 +104,26 @@ pub fn update(model: Model, msg: Msg) -> (Model, Vec<Effect>) {
         Msg::Resized { height } => (Model { height, ..model }, vec![]),
         Msg::Clicked { y } => clicked(model, y),
         Msg::Action(action) => act(model, action),
+        Msg::Git(read) => {
+            let tops = model
+                .tops
+                .clone()
+                .into_iter()
+                .chain(read.tops.clone())
+                .collect();
+            let git = super::preview::git::answered(model.git.clone(), read);
+            (Model { git, tops, ..model }, vec![])
+        }
     }
+}
+
+fn loaded(model: Model, snapshot: Snapshot) -> (Model, Vec<Effect>) {
+    let selection = selection::follow(model.selection.clone(), &snapshot, model.popup);
+    preview::git(Model {
+        snapshot,
+        selection,
+        ..model
+    })
 }
 
 fn clicked(model: Model, y: u16) -> (Model, Vec<Effect>) {
@@ -119,9 +143,13 @@ fn act(model: Model, action: Action) -> (Model, Vec<Effect>) {
         // before `off` sees it.
         Action::Quit => (model, vec![Effect::CloseAll]),
         Action::Reload => (model, vec![Effect::Reload]),
+        Action::Preview => {
+            let effects = preview::popup(&model);
+            (model, effects)
+        }
         Action::Move(_) | Action::First | Action::Last | Action::Attention(_) => {
             let key = moved_to(&model, action);
-            (select(model, key), vec![])
+            preview::git(select(model, key))
         }
     }
 }
@@ -139,7 +167,7 @@ fn moved_to(model: &Model, action: Action) -> Option<RowKey> {
             selected,
             direction,
         ),
-        Action::Activate | Action::Quit | Action::Reload => None,
+        Action::Activate | Action::Quit | Action::Reload | Action::Preview => None,
     }
 }
 
@@ -156,44 +184,6 @@ fn attention_keys(rows: &[Row]) -> Vec<RowKey> {
         .filter(|r| matches!(r, Row::Session(c) if c.record.state.needs_attention()))
         .filter_map(rows::key)
         .collect()
-}
-
-/// Jumps to the selected row; a popup closes after a successful jump.
-fn activate(model: Model) -> (Model, Vec<Effect>) {
-    let goto = model
-        .selection
-        .selected
-        .as_ref()
-        .and_then(|key| destination(&model.snapshot, key));
-    let leaves = |window: Option<WindowId>| window.is_some() && window != model.snapshot.window;
-    let effects = goto
-        .into_iter()
-        .flat_map(|(target, window)| {
-            let exit = model.popup.then_some(Effect::Exit);
-            [Effect::Goto {
-                target,
-                leaves_window: leaves(window),
-            }]
-            .into_iter()
-            .chain(exit)
-        })
-        .collect();
-    (model, effects)
-}
-
-fn destination(snapshot: &Snapshot, key: &RowKey) -> Option<(Target, Option<WindowId>)> {
-    match key {
-        RowKey::Session(name) => Some((
-            Target::Session(name.clone()),
-            snapshot.session_windows.get(name).copied(),
-        )),
-        RowKey::Claude(_) | RowKey::Window(_) => snapshot
-            .rows
-            .iter()
-            .filter(|r| rows::key(r).as_ref() == Some(key))
-            .find_map(rows::pane)
-            .map(|p| (Target::Pane(p.id), Some(p.window_id))),
-    }
 }
 
 #[cfg(test)]

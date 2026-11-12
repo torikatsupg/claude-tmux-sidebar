@@ -1,5 +1,10 @@
 //! Runs the effects that [`update`](super::update::update) asks for.
 
+pub mod git;
+
+use std::sync::mpsc::Sender;
+
+use super::preview::{self, GitAsk};
 use super::update::{Effect, Target};
 use crate::context::Context;
 use crate::text::shell_quote;
@@ -12,7 +17,13 @@ pub enum Next {
     Stop,
 }
 
-pub fn perform(ctx: &Context, me: Option<PaneId>, effects: &[Effect]) -> Next {
+/// Runs `effects`, and returns what to do next. git runs on its own thread and answers later.
+pub fn perform(
+    ctx: &Context,
+    me: Option<PaneId>,
+    git: &Sender<GitAsk>,
+    effects: &[Effect],
+) -> Next {
     effects
         .iter()
         .fold(Next::Continue { reload: false }, |next, effect| {
@@ -23,6 +34,10 @@ pub fn perform(ctx: &Context, me: Option<PaneId>, effects: &[Effect]) -> Next {
                 (_, goto @ Effect::Goto { .. }) => {
                     run(ctx, me, goto);
                     Next::Continue { reload: true }
+                }
+                (next, Effect::Git(ask)) => {
+                    let _ = git.send(ask.clone());
+                    next
                 }
                 (next, effect) => {
                     run(ctx, me, effect);
@@ -48,7 +63,12 @@ fn run(ctx: &Context, me: Option<PaneId>, effect: &Effect) {
                 tmux::run(&["kill-pane", "-t", &me.to_string()]);
             }
         }
-        Effect::Reload | Effect::Exit => {}
+        Effect::PreviewPopup(pane) => {
+            let sizes = "#{pane_width} #{pane_height} #{client_width} #{client_height}";
+            let (width, height) = preview::popup_size(&tmux::display(&pane.to_string(), sizes));
+            tmux::preview_popup(*pane, &width, &height);
+        }
+        Effect::Reload | Effect::Exit | Effect::Git(_) => {}
     }
 }
 

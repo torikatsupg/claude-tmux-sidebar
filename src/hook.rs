@@ -2,6 +2,7 @@
 
 pub mod compose;
 pub mod event;
+pub mod tasks;
 pub mod transition;
 
 use std::io;
@@ -13,7 +14,7 @@ use transition::Outcome;
 use crate::context::{self, Context};
 use crate::notify;
 use crate::process;
-use crate::session::{Record, store, valid_session_id};
+use crate::session::{Record, Task, lock, store, valid_session_id};
 
 const DEBUG_LOG: &str = "debug.log";
 
@@ -31,23 +32,52 @@ fn handle(ctx: &Context, input: &str) -> io::Result<()> {
     if !valid_session_id(&payload.session_id) {
         return Ok(());
     }
-    let prev = store::read(&ctx.state_dir, &payload.session_id);
     let event = Event::of(&payload);
-    match transition::next(&event, prev.as_ref()) {
-        Outcome::Ignore => Ok(()),
+    let lock = lock::acquire(&ctx.state_dir, &payload.session_id);
+    let written = record(ctx, &payload, input, &event)?;
+    drop(lock);
+    if let Some((prev, record)) = written {
+        let by_notification = matches!(event, Event::Notification { .. });
+        notify::send::run(ctx, prev.as_ref(), &record, by_notification);
+    }
+    Ok(())
+}
+
+/// Reads, updates and writes the state file under the session's lock; the records to notify about, if a
+/// status was written.
+fn record(
+    ctx: &Context,
+    payload: &Payload,
+    input: &str,
+    event: &Event<'_>,
+) -> io::Result<Option<(Option<Record>, Record)>> {
+    let prev = store::read(&ctx.state_dir, &payload.session_id);
+    let now = context::now();
+    let tasks = tasks::next(payload, input, prev.as_ref().map_or(&[], |r| &r.tasks), now);
+    match transition::next(event, prev.as_ref()) {
+        Outcome::Ignore => prev.map_or(Ok(None), |prev| retask(ctx, prev, tasks).map(|()| None)),
         Outcome::Remove => {
             store::remove_session(&store::path(&ctx.state_dir, &payload.session_id));
-            Ok(())
+            Ok(None)
         }
         Outcome::Update(change) => {
             let origin = Origin::current(ctx, prev.as_ref());
-            let record = compose(&payload, prev.as_ref(), change, &origin);
+            let record = Record {
+                tasks,
+                ..compose(payload, prev.as_ref(), change, &origin)
+            };
             store::write(&ctx.state_dir, &record)?;
-            let by_notification = matches!(event, Event::Notification { .. });
-            notify::send::run(ctx, prev.as_ref(), &record, by_notification);
-            Ok(())
+            Ok(Some((prev, record)))
         }
     }
+}
+
+/// An event that leaves the status alone may still end a subagent; only the tasks change then.
+fn retask(ctx: &Context, prev: Record, tasks: Vec<Task>) -> io::Result<()> {
+    if tasks == prev.tasks {
+        return Ok(());
+    }
+    store::write(&ctx.state_dir, &Record { tasks, ..prev })
 }
 
 /// Where and when the hook runs.

@@ -131,6 +131,7 @@ pub fn sweep_windows(dir: &Path) {
 pub fn remove_session(state_file: &Path) {
     remove(state_file);
     remove(&window_path(state_file));
+    remove(&state_file.with_extension("lock"));
     for status in ALERTS {
         remove(&alert_path(state_file, status));
     }
