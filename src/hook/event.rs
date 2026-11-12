@@ -25,19 +25,36 @@ pub struct Payload {
     /// How `SessionStart` began: `startup`, `resume`, `clear` or `compact`.
     #[serde(default)]
     pub source: String,
-    /// On `Stop`: the subagents, shells and monitors the session started in the background.
+    /// On `Stop` (and `SubagentStop`, for the whole session): the subagents, shells and monitors the session
+    /// started in the background. `None` when the payload has no such field.
     #[serde(default)]
-    pub background_tasks: Vec<BackgroundTask>,
+    pub background_tasks: Option<Vec<BackgroundTask>>,
+    #[serde(default)]
+    pub tool_use_id: String,
+    #[serde(default)]
+    pub tool_input: serde_json::Value,
+    #[serde(default)]
+    pub tool_response: serde_json::Value,
 }
 
 /// One entry of `background_tasks`.
 #[derive(Debug, Default, Deserialize)]
 pub struct BackgroundTask {
+    #[serde(default)]
+    pub id: String,
     /// `subagent`, `shell`, `monitor`, …
     #[serde(default, rename = "type")]
     pub kind: String,
     #[serde(default)]
     pub status: String,
+    #[serde(default)]
+    pub description: String,
+    /// Only for `shell` tasks.
+    #[serde(default)]
+    pub command: String,
+    /// Only for `subagent` tasks.
+    #[serde(default)]
+    pub agent_type: String,
 }
 
 /// A hook event, with the data each one carries. `agent` is the subagent it fired in, or empty for the main thread.
@@ -108,6 +125,7 @@ impl<'a> Event<'a> {
                 busy: payload
                     .background_tasks
                     .iter()
+                    .flatten()
                     .find(|t| t.status == "running" && t.kind != "monitor")
                     .map(|t| t.kind.as_str()),
             },
@@ -119,72 +137,4 @@ impl<'a> Event<'a> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn reads_the_event_and_its_data() {
-        let payload: Payload = serde_json::from_str(
-            r#"{"hook_event_name":"PreToolUse","session_id":"s","tool_name":"Bash","extra":1}"#,
-        )
-        .unwrap_or_default();
-        assert_eq!(
-            Event::of(&payload),
-            Event::PreToolUse {
-                tool: "Bash",
-                agent: ""
-            }
-        );
-    }
-
-    #[test]
-    fn reads_the_subagent_a_hook_fired_in() {
-        let payload: Payload = serde_json::from_str(
-            r#"{"hook_event_name":"PostToolUseFailure","session_id":"s","tool_name":"Bash",
-                "agent_id":"a1","agent_type":"Explore"}"#,
-        )
-        .unwrap_or_default();
-        assert_eq!(
-            Event::of(&payload),
-            Event::PostToolUse {
-                tool: "Bash",
-                agent: "a1"
-            }
-        );
-    }
-
-    #[test]
-    fn stop_reads_the_running_background_task() {
-        let payload: Payload = serde_json::from_str(
-            r#"{"hook_event_name":"Stop","session_id":"s","background_tasks":[
-                {"id":"a","type":"subagent","status":"completed"},
-                {"id":"b","type":"shell","status":"running","command":"sleep 40"}]}"#,
-        )
-        .unwrap_or_default();
-        assert_eq!(
-            Event::of(&payload),
-            Event::Stop {
-                busy: Some("shell")
-            }
-        );
-    }
-
-    #[test]
-    fn stop_failure_ends_the_turn() {
-        let payload: Payload = serde_json::from_str(
-            r#"{"hook_event_name":"StopFailure","session_id":"s","error":"rate_limit"}"#,
-        )
-        .unwrap_or_default();
-        assert_eq!(Event::of(&payload), Event::Stop { busy: None });
-    }
-
-    #[test]
-    fn stop_does_not_count_a_running_monitor() {
-        let payload: Payload = serde_json::from_str(
-            r#"{"hook_event_name":"Stop","session_id":"s","background_tasks":[
-                {"id":"a","type":"monitor","status":"running"}]}"#,
-        )
-        .unwrap_or_default();
-        assert_eq!(Event::of(&payload), Event::Stop { busy: None });
-    }
-}
+mod tests;

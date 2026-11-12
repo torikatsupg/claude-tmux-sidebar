@@ -13,6 +13,7 @@ use crate::listing::GroupName;
 use crate::session::Status;
 use crate::text::truncate;
 
+mod panel;
 mod preview;
 mod session;
 mod session_name;
@@ -50,7 +51,7 @@ pub fn lines(model: &Model, messages: &Messages, width: u16, height: u16) -> Vec
         .into_iter()
         .chain(body)
         .chain(std::iter::repeat_n(Line::default(), filler))
-        .chain(preview::block(model, width, height))
+        .chain(preview::block(model, messages, width, height))
         .chain(model.help.then(|| help(model, messages)))
         .collect()
 }

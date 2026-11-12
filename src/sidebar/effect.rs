@@ -1,6 +1,8 @@
 //! Runs the effects that [`update`](super::update::update) asks for.
 
-use super::preview::{self, Captured};
+use std::process::{Command, Stdio};
+
+use super::preview::{self, GitRead};
 use super::update::{Effect, Msg, Target};
 use crate::context::Context;
 use crate::text::shell_quote;
@@ -37,16 +39,35 @@ pub fn perform(ctx: &Context, me: Option<PaneId>, effects: &[Effect]) -> (Next, 
 
 fn answer(effect: &Effect) -> Option<Msg> {
     match effect {
-        Effect::Capture(pane) => Some(captured(*pane, &tmux::capture(*pane))),
+        Effect::Git(dir) => Some(read(
+            dir,
+            git(dir, &["rev-parse", "--abbrev-ref", "HEAD"]),
+            git(dir, &["diff", "--shortstat", "HEAD"]).as_deref(),
+        )),
         _ => None,
     }
 }
 
-/// What a capture answers; a gone pane or a failed `capture-pane` prints nothing, which empties the preview.
-fn captured(pane: PaneId, output: &str) -> Msg {
-    Msg::Captured(Captured {
-        pane,
-        lines: preview::clean(output),
+/// `git -C DIR ARGS`, `None` when it fails (not a repository, no commits yet). It takes no optional
+/// locks, so that it never gets in the way of the user's own git.
+fn git(dir: &str, args: &[&str]) -> Option<String> {
+    Command::new("git")
+        .args(["--no-optional-locks", "-C", dir])
+        .args(args)
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
+}
+
+/// What git answered about `dir`; nothing outside a repository.
+fn read(dir: &str, branch: Option<String>, stat: Option<&str>) -> Msg {
+    Msg::Git(GitRead {
+        dir: dir.to_owned(),
+        branch: branch.unwrap_or_default(),
+        changes: stat.and_then(preview::shortstat),
     })
 }
 
@@ -71,7 +92,7 @@ fn run(ctx: &Context, me: Option<PaneId>, effect: &Effect) {
             let (width, height) = preview::popup_size(&tmux::display(&pane.to_string(), sizes));
             tmux::preview_popup(*pane, &width, &height);
         }
-        Effect::Reload | Effect::Exit | Effect::Capture(_) => {}
+        Effect::Reload | Effect::Exit | Effect::Git(_) => {}
     }
 }
 
@@ -92,29 +113,33 @@ fn goto(me: Option<PaneId>, target: &Target, leaves_window: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tmux::pane::fixture::pane;
+    use crate::sidebar::preview::Changes;
 
     #[test]
-    fn a_failed_capture_leaves_the_preview_empty() {
-        let id = pane(1, 0).id;
+    fn outside_a_repository_git_answers_nothing() {
         assert_eq!(
-            captured(id, ""),
-            Msg::Captured(Captured {
-                pane: id,
-                lines: vec![]
+            read("/tmp", None, None),
+            Msg::Git(GitRead {
+                dir: "/tmp".to_owned(),
+                branch: String::new(),
+                changes: None
             })
         );
     }
 
     #[test]
-    fn odd_bytes_keep_the_rest_of_the_capture() {
-        let id = pane(1, 0).id;
-        let output = String::from_utf8_lossy(b"ok \xff\nnext");
+    fn a_repository_answers_its_branch_and_changes() {
+        let stat = " 2 files changed, 5 insertions(+), 1 deletion(-)".to_owned();
         assert_eq!(
-            captured(id, &output),
-            Msg::Captured(Captured {
-                pane: id,
-                lines: vec!["ok \u{fffd}".to_owned(), "next".to_owned()]
+            read("/src", Some("main".to_owned()), Some(&stat)),
+            Msg::Git(GitRead {
+                dir: "/src".to_owned(),
+                branch: "main".to_owned(),
+                changes: Some(Changes {
+                    files: 2,
+                    added: 5,
+                    removed: 1
+                })
             })
         );
     }

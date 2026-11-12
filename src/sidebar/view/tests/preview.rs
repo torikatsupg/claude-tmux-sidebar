@@ -1,11 +1,13 @@
 use super::*;
-use crate::sidebar::preview::{Captured, Mode, Preview};
+use crate::sidebar::preview::{Changes, Git, Mode, Preview};
 
 /// `count` windows without Claude in one session, each one row.
 fn window_rows(count: u32) -> Vec<Row> {
     let windows: Vec<Pane> = (0..count)
         .map(|i| Pane {
             window_name: format!("w{i}"),
+            command: "nvim".to_owned(),
+            path: format!("/w{i}"),
             ..pane(i, i)
         })
         .collect();
@@ -16,7 +18,7 @@ fn window_rows(count: u32) -> Vec<Row> {
     rows::with_windows(&groups, &windows)
 }
 
-/// `count` windows, the cursor on the last, and a capture of its pane.
+/// `count` windows, the cursor on the last, and what git said about its directory.
 fn windows_model(count: u32, mode: Mode, height: u16) -> Model {
     let rows = window_rows(count);
     let selected = rows::keys(&rows).last().cloned();
@@ -35,13 +37,23 @@ fn windows_model(count: u32, mode: Mode, height: u16) -> Model {
             mode,
             ..Preview::default()
         },
-        captured: Some(Captured {
-            pane: pane(last, last).id,
-            lines: (1..=20).map(|n| format!("out {n}")).collect(),
-        }),
+        git: Some(git(&format!("/w{last}"))),
         height,
         help: true,
         ..Model::default()
+    }
+}
+
+fn git(dir: &str) -> Git {
+    Git {
+        dir: dir.to_owned(),
+        asked: 0,
+        branch: "main".to_owned(),
+        changes: Some(Changes {
+            files: 1,
+            added: 3,
+            removed: 1,
+        }),
     }
 }
 
@@ -52,24 +64,34 @@ fn rule(name: &str, width: usize) -> String {
 }
 
 #[test]
-fn the_preview_shows_the_tail_of_the_selected_pane_above_the_help() {
+fn a_window_row_shows_its_command_directory_branch_and_changes() {
     let model = windows_model(2, Mode::Pane, 30);
     let screen = screen(&model, &EN);
     assert_eq!(screen.len(), 30);
     assert_eq!(model.list_end(30), 20);
-    assert_eq!(screen.get(20), Some(&rule("s/1:w1", 34)));
-    assert_eq!(screen.get(21).map(String::as_str), Some("out 13"));
-    assert_eq!(screen.get(28).map(String::as_str), Some("out 20"));
+    let preview: Vec<&str> = screen.iter().skip(20).take(6).map(String::as_str).collect();
+    assert_eq!(
+        preview,
+        [
+            rule("s/1:w1", 34).as_str(),
+            "nvim",
+            "/w1",
+            "main",
+            "± +3 -1 (1 file)",
+            ""
+        ]
+    );
     assert!(screen.last().is_some_and(|l| l.contains("jump")));
 }
 
 #[test]
-fn a_capture_of_another_pane_is_not_shown() {
+fn git_of_another_directory_is_not_shown() {
     let model = Model {
-        selection: Selection::default(),
+        git: Some(git("/elsewhere")),
         ..windows_model(2, Mode::Pane, 30)
     };
-    assert!(screen(&model, &EN).iter().all(|l| !l.contains("out")));
+    let screen = screen(&model, &EN);
+    assert!(screen.iter().all(|l| !l.contains('±') && l != "main"));
 }
 
 #[test]
@@ -92,10 +114,7 @@ fn the_preview_takes_at_most_a_third_and_none_on_short_panes() {
 fn off_draws_the_list_as_before() {
     let model = Model {
         preview: Preview::default(),
-        captured: Some(Captured {
-            pane: pane(1, 2).id,
-            lines: vec!["out".to_owned()],
-        }),
+        git: Some(git("/src/api")),
         height: 30,
         ..model(Status::Waiting, "Edit", true)
     };
@@ -135,7 +154,7 @@ fn unfocused(model: Model) -> Model {
 fn without_the_focus_the_list_takes_the_full_height() {
     let model = unfocused(windows_model(2, Mode::Pane, 30));
     assert_eq!(model.list_end(30), 29);
-    assert!(screen(&model, &EN).iter().all(|l| !l.contains("out")));
+    assert!(screen(&model, &EN).iter().all(|l| !l.contains('±')));
 }
 
 #[test]
@@ -153,38 +172,6 @@ fn scrolling_and_clicks_follow_the_list_height_as_the_focus_moves() {
     }
 }
 
-#[test]
-fn the_help_shows_the_popup_key_only_for_popup() {
-    let help = |mode, messages| {
-        screen(&windows_model(2, mode, 30), messages)
-            .last()
-            .cloned()
-    };
-    assert_eq!(
-        help(Mode::Popup, &EN).as_deref(),
-        Some("⏎ jump  j/k move  q close  ␣ peek")
-    );
-    assert_eq!(
-        help(Mode::Popup, &JA).as_deref(),
-        Some("⏎ 移動  j/k 選択  q 閉じる  ␣ 中身")
-    );
-    assert_eq!(
-        help(Mode::Pane, &EN).as_deref(),
-        Some("⏎ jump  j/k move  q close")
-    );
-    let other_key = Model {
-        preview: Preview {
-            mode: Mode::Popup,
-            key: 'v',
-            ..Preview::default()
-        },
-        ..windows_model(2, Mode::Popup, 30)
-    };
-    assert!(
-        screen(&other_key, &EN)
-            .last()
-            .is_some_and(|l| l.ends_with("v peek"))
-    );
-}
-
+mod claude;
 mod content;
+mod help;

@@ -4,7 +4,7 @@ mod activate;
 mod layout;
 mod preview;
 
-use super::preview::{Captured, Preview};
+use super::preview::{Git, GitRead, Preview};
 use super::rows::{self, Row, RowKey};
 use super::selection::{self, Selection};
 use super::snapshot::Snapshot;
@@ -28,8 +28,8 @@ pub struct Model {
     pub indent: super::indent::Indent,
     pub theme: super::theme::Theme,
     pub preview: Preview,
-    /// The latest capture for the preview; shown only while its pane is still the cursor row's.
-    pub captured: Option<Captured>,
+    /// What `git` said about the preview's directory; shown only while it is still that directory.
+    pub git: Option<Git>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -39,7 +39,7 @@ pub enum Msg {
     Resized { height: u16 },
     Clicked { y: u16 },
     Action(Action),
-    Captured(Captured),
+    Git(GitRead),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -69,8 +69,8 @@ pub enum Effect {
     KillSelf,
     Reload,
     Exit,
-    /// Read the tail of a pane for the preview; answered with [`Msg::Captured`].
-    Capture(PaneId),
+    /// Read the branch and change summary of a directory; answered with [`Msg::Git`].
+    Git(String),
     /// Show the tail of a pane in a tmux popup.
     PreviewPopup(PaneId),
 }
@@ -98,9 +98,9 @@ pub fn update(model: Model, msg: Msg) -> (Model, Vec<Effect>) {
         Msg::Resized { height } => (Model { height, ..model }, vec![]),
         Msg::Clicked { y } => clicked(model, y),
         Msg::Action(action) => act(model, action),
-        Msg::Captured(captured) => (
+        Msg::Git(read) => (
             Model {
-                captured: Some(captured),
+                git: super::preview::git::answered(model.git.clone(), read),
                 ..model
             },
             vec![],
@@ -110,13 +110,11 @@ pub fn update(model: Model, msg: Msg) -> (Model, Vec<Effect>) {
 
 fn loaded(model: Model, snapshot: Snapshot) -> (Model, Vec<Effect>) {
     let selection = selection::follow(model.selection.clone(), &snapshot, model.popup);
-    let model = Model {
+    preview::git(Model {
         snapshot,
         selection,
         ..model
-    };
-    let effects = preview::capture(&model);
-    (model, effects)
+    })
 }
 
 fn clicked(model: Model, y: u16) -> (Model, Vec<Effect>) {
@@ -142,9 +140,7 @@ fn act(model: Model, action: Action) -> (Model, Vec<Effect>) {
         }
         Action::Move(_) | Action::First | Action::Last | Action::Attention(_) => {
             let key = moved_to(&model, action);
-            let model = select(model, key);
-            let effects = preview::capture(&model);
-            (model, effects)
+            preview::git(select(model, key))
         }
     }
 }

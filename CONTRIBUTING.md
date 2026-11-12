@@ -23,6 +23,8 @@ A turn interrupted with Esc, or by denying a permission prompt, fires no `Stop`;
 
 Hooks from subagents carry the parent's `session_id` and an `agent_id`. While a prompt is pending, only the agent that raised it (its tool events, or `SubagentStop` for a subagent) ends the wait; other agents' events, a `Stop` with background tasks still running, and a `UserPromptSubmit` while a subagent waits (a background task's notification; no prompt can be typed over an open dialog) keep it waiting. Only main-thread events update the session's `cwd`.
 
+The state file's `tasks` lists the subagents and background tasks still running, for the sidebar's preview. A main-thread `Agent` call adds a subagent under its tool call id, a background launch (`async_launched`) moves it to its agent id, and the call's return or `SubagentStop` removes it. `Stop` (and `SubagentStop`, which reports the whole session's tasks) replaces the list with the running `background_tasks`, so an entry whose end was missed does not stay. A new process (`SessionStart` startup / resume) starts empty.
+
 ## Development
 
 Requires a Rust toolchain (the version is pinned in `rust-toolchain.toml`), [shellcheck](https://www.shellcheck.net) and [shfmt](https://github.com/mvdan/sh).

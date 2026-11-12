@@ -1,11 +1,9 @@
 //! What the preview shows for the cursor row, before it is wrapped to the sidebar's width.
 
-use super::text::plain;
-use crate::session::Status;
 use crate::session::live::Claude;
-use crate::session::transcript::Ask;
 use crate::sidebar::rows::{self, Row, RowKey};
 use crate::sidebar::snapshot::Snapshot;
+use crate::text::{printable, visible};
 use crate::tmux::pane::Pane;
 
 /// What the cursor row stands for.
@@ -31,27 +29,21 @@ pub fn subject<'a>(snapshot: &'a Snapshot, selected: Option<&RowKey>) -> Option<
         })
 }
 
-/// What a session asks for while it waits, or else Claude's last reply.
-pub fn said(claude: &Claude) -> Vec<String> {
-    let said = claude.latest.as_ref().map(|l| &l.said);
-    let waiting = claude.record.state == Status::Waiting;
-    match said.and_then(|s| s.ask.as_ref()).filter(|_| waiting) {
-        Some(ask) => asked(ask),
-        None => tidy(said.map_or("", |s| s.reply.as_str())),
-    }
+/// What the session's last tool call without a result is: `Tool: detail` on one line, or the question of
+/// `AskUserQuestion`. While waiting, it is what Claude asks for; while running, the tool at work.
+pub fn ask(claude: &Claude) -> Option<String> {
+    let ask = claude.latest.as_ref()?.said.ask.as_ref()?;
+    let detail = printable(&ask.detail);
+    Some(match (ask.tool.as_str(), detail.is_empty()) {
+        (_, true) => ask.tool.clone(),
+        ("AskUserQuestion", false) => detail,
+        (tool, false) => format!("{tool}: {detail}"),
+    })
 }
 
-/// `Tool: detail`, or the question itself for `AskUserQuestion`.
-fn asked(ask: &Ask) -> Vec<String> {
-    let detail = tidy(&ask.detail);
-    if ask.tool == "AskUserQuestion" && !detail.is_empty() {
-        return detail;
-    }
-    let mut lines = detail.into_iter();
-    let first = lines
-        .next()
-        .map_or_else(|| ask.tool.clone(), |d| format!("{}: {d}", ask.tool));
-    [first].into_iter().chain(lines).collect()
+/// Claude's last reply, made plain.
+pub fn reply(claude: &Claude) -> Vec<String> {
+    tidy(claude.latest.as_ref().map_or("", |l| l.said.reply.as_str()))
 }
 
 /// Markdown made plain enough to read: no code fences or heading marks, and at most one blank line in a row.
@@ -59,7 +51,7 @@ pub fn tidy(text: &str) -> Vec<String> {
     let lines = text
         .lines()
         .filter(|line| !line.trim_start().starts_with("```"))
-        .map(|line| plain(&heading(line)).trim_end().to_owned())
+        .map(|line| visible(&heading(line)).trim_end().to_owned())
         .fold(Vec::<String>::new(), |mut lines, line| {
             let repeated = line.is_empty() && lines.last().is_none_or(String::is_empty);
             if !repeated {

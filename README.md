@@ -54,7 +54,13 @@ Each session shows its directory and git branch, with the tool in use and how lo
 
 Sessions, windows and panes are listed in tmux's own order. The selection follows the pane you are focused on.
 
-While the sidebar has the focus, a preview below the list shows what the selected row last said, so you can see what a Claude is waiting for or what it answered before you go there. For a Claude row it is the end of Claude's last reply, read from the session's transcript (code fences and heading marks dropped); while the session waits for you, it is what Claude asks for instead: the tool and its command, file or question. For a window without Claude it is the end of the pane's screen as plain text, leaving out an input box framed by two rules at the bottom and the lines below it. Lines wrap to the sidebar width instead of being cut. The rule above the preview names the row (`session/name`) in the color of tmux's `pane-border-style`. Without the focus, the selection follows the pane you are in, so there is nothing new to preview, and the list takes the full height as before. The preview follows the cursor and refreshes with the list. It takes at most a third of the sidebar (10 lines of text), and none when the sidebar is too short; the list scrolls above it. A tmux session row without Claude has nothing to preview.
+While the sidebar has the focus, a panel below the list shows the selected session, so you can see what it needs before you go there. The rule above it names the row (`session/name`) in the color of tmux's `pane-border-style`. What the panel shows depends on the status:
+
+- ◆ waiting for you: what Claude asks for, wrapped (`Bash: <command>`, `Edit: <file>`, or the question of `AskUserQuestion`), read from the session's transcript. The rows below follow when there is room.
+- ⠹ running: the tool in use and its main input, then the subagents (type, description, how long they have run) and the background tasks (shells, monitors, …) still running. When the panel is short, rows go from the bottom and only the counts (`agents 2`) stay.
+- ✓ done / ○ idle: the end of Claude's last reply (code fences and heading marks dropped), any background work still running, and on the last line the working tree's changes, `± +128 -14 (3 files)` (`git diff --shortstat HEAD`, so untracked files are not counted). The summary says `shared` when another Claude session works in the same directory, since the changes are not only this session's.
+
+For a window without Claude, the panel shows the command running in it, its directory, branch and changes. Lines with nothing to show are left out. Without the focus, the selection follows the pane you are in, so the list takes the full height as before. The panel follows the cursor and refreshes with the list; `git` runs at most every 10 seconds, and right away for a new directory. It takes at most a third of the sidebar (10 lines), and none when the sidebar is too short; the list scrolls above it. While a session waits for you, its second row in the list shows what it asks for in place of your last prompt.
 
 ## Options
 
@@ -188,7 +194,7 @@ Restart running Claude Code sessions to pick up the hooks.
 
 ## Privacy
 
-Everything stays on your machine. Each Claude session's status is kept in `~/.cache/claude-tmux-sidebar/<session_id>.json`, readable only by you and removed when the session ends. It holds the session ID, working directory, tool name, tmux pane, Claude's process ID, the path of the session's transcript and the first 200 characters of your last prompt. The sidebar reads the git branch, context usage and, for the preview, Claude's last reply and pending tool call from the end of that transcript, and does not store them.
+Everything stays on your machine. Each Claude session's status is kept in `~/.cache/claude-tmux-sidebar/<session_id>.json`, readable only by you and removed when the session ends. It holds the session ID, working directory, tool name, tmux pane, Claude's process ID, the path of the session's transcript and the first 200 characters of your last prompt. It also holds the subagents and background tasks still running, with their descriptions or commands. The sidebar reads the git branch, context usage and, for the preview, Claude's last reply and pending tool call from the end of that transcript, and does not store them; for the change summary it runs `git diff --shortstat` in the session's directory.
 
 For debugging, start Claude with `CTS_DEBUG=1` to append raw hook payloads to `~/.cache/claude-tmux-sidebar/debug.log`. **The log contains your prompts and tool inputs** — delete it when done and check it before sharing.
 

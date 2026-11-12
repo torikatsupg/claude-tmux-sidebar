@@ -8,6 +8,7 @@ use super::session_name as name;
 use super::window::number_first;
 use crate::session::Status;
 use crate::session::live::Claude;
+use crate::sidebar::preview;
 use crate::sidebar::theme::Theme;
 use crate::sidebar::update::Model;
 use crate::text::{self, age, truncate};
@@ -71,12 +72,18 @@ pub fn detail(model: &Model, claude: &Claude, width: usize) -> Line<'static> {
     } else {
         text::width(&context) + 1
     };
-    let prompt = truncate(&record.prompt, width.saturating_sub(3 + reserved));
+    // While waiting, what Claude asks for tells what to allow without opening the session.
+    let (text, style) = preview::ask(claude)
+        .filter(|_| record.state == Status::Waiting)
+        .map_or((record.prompt.clone(), theme.muted), |ask| {
+            (ask, theme.waiting)
+        });
+    let prompt = truncate(&text, width.saturating_sub(3 + reserved));
     let gap = width.saturating_sub(3 + text::width(&prompt) + text::width(&context));
     Line::from(vec![
         Span::raw(indent),
         Span::styled("└ ", theme.dim),
-        Span::styled(prompt, theme.muted),
+        Span::styled(prompt, style),
         Span::raw(" ".repeat(gap)),
         Span::styled(context, color),
         Span::raw(" "),
@@ -124,7 +131,7 @@ fn here(model: &Model, claude: &Claude) -> bool {
 }
 
 /// The status icon; a running session spins.
-fn icon(model: &Model, status: Status) -> Span<'static> {
+pub(super) fn icon(model: &Model, status: Status) -> Span<'static> {
     let (icon, color) = look(&model.theme, status);
     let spinner = SPINNER
         .get(model.frame % SPINNER.len())

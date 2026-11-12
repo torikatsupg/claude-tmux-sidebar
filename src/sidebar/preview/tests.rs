@@ -44,35 +44,6 @@ fn a_popup_key_taken_by_the_list_falls_back_to_space() {
 }
 
 #[test]
-fn clean_drops_control_and_format_characters_and_trailing_blank_lines() {
-    assert_eq!(clean("a\x07b  \n\n c\n\n  \n"), ["ab", "", " c"]);
-    assert_eq!(clean("x\u{202e}y\u{200b}z\u{feff}"), ["xyz"]);
-    assert!(clean("").is_empty());
-}
-
-#[test]
-fn clean_drops_an_input_box_and_its_footer_at_the_bottom() {
-    let rule = "─".repeat(30);
-    let screen = format!(
-        "● Done.\n\n✻ Worked for 3s\n\n{rule}\n❯ \n{rule}\n  ~/src/api  |  ctx: 25%\n  ⏵⏵ accept edits on\n\n"
-    );
-    assert_eq!(clean(&screen), ["● Done.", "", "✻ Worked for 3s"]);
-    let boxed = "out\n╭──────────╮\n│ > hi     │\n╰──────────╯\n  ? for shortcuts\n";
-    assert_eq!(clean(boxed), ["out"]);
-}
-
-#[test]
-fn clean_keeps_rules_that_frame_no_input() {
-    let rule = "─".repeat(30);
-    let dialog = format!(
-        "{rule}\n Bash command\n   rm -rf build\n Do you want to proceed?\n ❯ 1. Yes\n   2. No\n"
-    );
-    assert_eq!(clean(&dialog).len(), 6);
-    let far = format!("{rule}\n❯ \n{rule}\n{}", "line\n".repeat(9));
-    assert_eq!(clean(&far).len(), 12);
-}
-
-#[test]
 fn the_popup_fits_the_pane_and_its_border_within_the_client() {
     let size = |s| popup_size(s);
     assert_eq!(size("165 50 200 52"), ("167".to_owned(), "52".to_owned()));

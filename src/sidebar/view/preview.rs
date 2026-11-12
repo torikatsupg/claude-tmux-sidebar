@@ -1,26 +1,26 @@
-//! The preview below the list: a rule naming the cursor row, then the end of what it last showed.
+//! The preview below the list: a rule naming the cursor row, then its status panel.
 
 use ratatui::text::{Line, Span};
 
-use super::{session_name, window};
-use crate::sidebar::preview::{self, Subject};
+use super::{panel, session_name, window};
+use crate::i18n::Messages;
+use crate::sidebar::preview::{self, Context, Subject};
+use crate::sidebar::rows::Row;
 use crate::sidebar::update::Model;
 use crate::text::{self, truncate};
 
 /// `height` lines: nothing when the preview is off, unfocused, or the pane is too short for it.
-pub fn block(model: &Model, width: usize, height: u16) -> Vec<Line<'static>> {
+pub fn block(model: &Model, messages: &Messages, width: usize, height: u16) -> Vec<Line<'static>> {
     let Some(room) = usize::from(model.preview_height(height)).checked_sub(1) else {
         return Vec::new();
     };
     let subject = preview::subject(&model.snapshot, model.selection.selected.as_ref());
-    let wrapped: Vec<String> = subject
-        .map(|s| body(model, s))
+    let body: Vec<Line<'static>> = subject
+        .map(|s| preview::items(s, &context(model, s, width), room))
         .unwrap_or_default()
         .iter()
-        .flat_map(|line| preview::wrap(line, width))
+        .map(|item| panel::line(model, messages, item, width))
         .collect();
-    let tail = wrapped.iter().skip(wrapped.len().saturating_sub(room));
-    let body: Vec<Line<'static>> = tail.map(|l| Line::raw(l.clone())).collect();
     let filler = room.saturating_sub(body.len());
     [rule(model, subject, width)]
         .into_iter()
@@ -29,16 +29,23 @@ pub fn block(model: &Model, width: usize, height: u16) -> Vec<Line<'static>> {
         .collect()
 }
 
-/// A Claude row's last words, or the screen of a window's pane while its capture is current.
-fn body(model: &Model, subject: Subject<'_>) -> Vec<String> {
-    match subject {
-        Subject::Claude(claude) => preview::said(claude),
-        Subject::Window(pane) => model
-            .captured
-            .as_ref()
-            .filter(|c| c.pane == pane.id)
-            .map(|c| c.lines.clone())
-            .unwrap_or_default(),
+/// The git answer while it is about the subject's directory, and whether another session shares it.
+fn context<'a>(model: &'a Model, subject: Subject<'_>, width: usize) -> Context<'a> {
+    let dir = preview::directory(&model.snapshot, model.selection.selected.as_ref());
+    let git = model.git.as_ref().filter(|g| Some(&g.dir) == dir.as_ref());
+    let shared = match subject {
+        Subject::Claude(me) => model.snapshot.rows.iter().any(|row| {
+            matches!(row, Row::Session(c) if c.record.session_id != me.record.session_id
+                && c.record.cwd == me.record.cwd)
+        }),
+        Subject::Window(_) => false,
+    };
+    Context {
+        changes: git.and_then(|g| g.changes),
+        branch: git.map_or("", |g| g.branch.as_str()),
+        shared,
+        now: model.now,
+        width,
     }
 }
 

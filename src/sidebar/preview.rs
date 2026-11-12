@@ -1,11 +1,14 @@
 //! The preview of the cursor row's pane (`@cts_preview`): at the bottom of the list, in a tmux popup, or off.
 
 mod body;
-mod text;
+mod fit;
+pub mod git;
+mod panel;
 mod wrap;
 
-pub use body::{Subject, said, subject, tidy};
-pub use text::clean;
+pub use body::{Subject, ask, subject, tidy};
+pub use git::{Changes, Git, GitRead, shortstat};
+pub use panel::{Context, Group, Item, items};
 pub use wrap::wrap;
 
 use ratatui::style::Color;
@@ -88,13 +91,6 @@ fn key(value: &str) -> Option<char> {
     }
 }
 
-/// What `capture-pane` printed for a pane, cleaned by [`clean`].
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Captured {
-    pub pane: PaneId,
-    pub lines: Vec<String>,
-}
-
 /// The fg of a `pane-border-style`: tmux's default (the terminal's text color) when it sets none, and
 /// `None` when it cannot be read.
 pub fn border_color(style: Option<&str>) -> Option<Color> {
@@ -105,12 +101,13 @@ pub fn border_color(style: Option<&str>) -> Option<Color> {
     fg.map_or(Some(Color::Reset), theme::color)
 }
 
-/// The pane of a window row, whose screen the preview captures; Claude rows read their transcript instead.
-pub fn window_target(snapshot: &Snapshot, selected: Option<&RowKey>) -> Option<PaneId> {
-    match subject(snapshot, selected)? {
-        Subject::Window(pane) => Some(pane.id),
-        Subject::Claude(_) => None,
-    }
+/// The directory whose changes the panel shows: a Claude session's, or a window's pane's.
+pub fn directory(snapshot: &Snapshot, selected: Option<&RowKey>) -> Option<String> {
+    let dir = match subject(snapshot, selected)? {
+        Subject::Claude(claude) => claude.record.cwd.clone(),
+        Subject::Window(pane) => pane.path.clone(),
+    };
+    Some(dir).filter(|d| !d.is_empty())
 }
 
 /// The pane the cursor row stands for: a Claude session's or a window's; none for a tmux session's placeholder.

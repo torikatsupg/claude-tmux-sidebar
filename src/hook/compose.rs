@@ -40,6 +40,11 @@ pub fn compose(
         background: change.background,
         agent: change.agent,
         answered: change.answered,
+        tasks: super::tasks::next(
+            payload,
+            prev.map_or(&[], |r| r.tasks.as_slice()),
+            origin.now,
+        ),
         ..latest(payload, prev)
     }
 }

@@ -2,6 +2,7 @@
 
 pub mod compose;
 pub mod event;
+pub mod tasks;
 pub mod transition;
 
 use std::io;
@@ -34,7 +35,7 @@ fn handle(ctx: &Context, input: &str) -> io::Result<()> {
     let prev = store::read(&ctx.state_dir, &payload.session_id);
     let event = Event::of(&payload);
     match transition::next(&event, prev.as_ref()) {
-        Outcome::Ignore => Ok(()),
+        Outcome::Ignore => prev.map_or(Ok(()), |prev| retask(ctx, &payload, prev)),
         Outcome::Remove => {
             store::remove_session(&store::path(&ctx.state_dir, &payload.session_id));
             Ok(())
@@ -48,6 +49,15 @@ fn handle(ctx: &Context, input: &str) -> io::Result<()> {
             Ok(())
         }
     }
+}
+
+/// An event that leaves the status alone may still end a subagent; only the tasks change then.
+fn retask(ctx: &Context, payload: &Payload, prev: Record) -> io::Result<()> {
+    let tasks = tasks::next(payload, &prev.tasks, context::now());
+    if tasks == prev.tasks {
+        return Ok(());
+    }
+    store::write(&ctx.state_dir, &Record { tasks, ..prev })
 }
 
 /// Where and when the hook runs.

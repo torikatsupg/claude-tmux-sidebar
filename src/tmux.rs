@@ -8,13 +8,6 @@ use pane::{Pane, PaneId, WindowId};
 
 /// Runs `tmux ARGS` and returns its stdout, or an empty string when tmux fails.
 pub fn output(args: &[&str]) -> String {
-    stdout(args)
-        .and_then(|bytes| String::from_utf8(bytes).ok())
-        .unwrap_or_default()
-}
-
-/// The stdout of `tmux ARGS`, `None` when tmux fails.
-fn stdout(args: &[&str]) -> Option<Vec<u8>> {
     Command::new("tmux")
         .args(args)
         .stdin(Stdio::null())
@@ -22,7 +15,8 @@ fn stdout(args: &[&str]) -> Option<Vec<u8>> {
         .output()
         .ok()
         .filter(|o| o.status.success())
-        .map(|o| o.stdout)
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .unwrap_or_default()
 }
 
 /// Starts `tmux ARGS` without waiting for it, for commands that last as long as the user looks.
@@ -127,14 +121,6 @@ pub fn message(client: Option<&str>, text: &str) {
         .chain([text])
         .collect();
     run(&args);
-}
-
-/// The visible text of a pane, without colors; empty when the pane is gone. Invalid UTF-8 is replaced, so
-/// one odd byte does not lose the rest.
-pub fn capture(pane: PaneId) -> String {
-    stdout(&["capture-pane", "-p", "-t", &pane.to_string()])
-        .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
-        .unwrap_or_default()
 }
 
 /// The visible text of a pane, with its colors, in a popup of `width` × `height`; `Escape` closes it.

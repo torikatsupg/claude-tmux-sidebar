@@ -1,5 +1,5 @@
 use super::*;
-use crate::sidebar::preview::{Captured, Mode, Preview};
+use crate::sidebar::preview::{Changes, GitRead, Mode, Preview};
 
 fn model(mode: Mode) -> Model {
     Model {
@@ -12,8 +12,16 @@ fn model(mode: Mode) -> Model {
     }
 }
 
-fn capture(id: u32, window: u32) -> Effect {
-    Effect::Capture(pane(id, window).id)
+fn git(dir: &str) -> Effect {
+    Effect::Git(dir.to_owned())
+}
+
+/// A pane working in `/w<id>`.
+fn at_work(id: u32, window: u32) -> Pane {
+    Pane {
+        path: format!("/w{id}"),
+        ..pane(id, window)
+    }
 }
 
 /// The sidebar (pane 9) in window 0, which runs no Claude (pane 1), next to window 1 (pane 2).
@@ -27,45 +35,83 @@ fn windows(focused: bool) -> Snapshot {
         active: focused,
         ..pane(9, 0)
     };
-    let rows = rows::with_windows(&groups, &[pane(1, 0), pane(2, 1)]);
-    let panes = [sidebar, pane(1, 0), pane(2, 1)];
+    let rows = rows::with_windows(&groups, &[at_work(1, 0), at_work(2, 1)]);
+    let panes = [sidebar, at_work(1, 0), at_work(2, 1)];
     super::super::super::snapshot::from_parts(rows, &panes, Some(pane(9, 0).id), false)
 }
 
-#[test]
-fn a_claude_row_is_previewed_from_its_transcript_without_a_capture() {
-    let (model, loaded) = update(model(Mode::Pane), Msg::Loaded(snapshot(true)));
-    assert_eq!(selected(&model), Some(&claude_key("a")));
-    let (_, moved) = update(model, Msg::Action(Action::Move(1)));
-    assert!(loaded.is_empty() && moved.is_empty());
+/// The Claude rows of [`snapshot`], working in `/a` and `/b`.
+fn in_dirs(sidebar_active: bool) -> Snapshot {
+    let snapshot = snapshot(sidebar_active);
+    let rows = snapshot
+        .rows
+        .iter()
+        .map(|row| match row {
+            Row::Session(c) => Row::Session(Claude {
+                record: Record {
+                    cwd: format!("/{}", c.record.session_id),
+                    ..c.record.clone()
+                },
+                ..c.clone()
+            }),
+            other => other.clone(),
+        })
+        .collect();
+    Snapshot { rows, ..snapshot }
 }
 
 #[test]
-fn each_reload_captures_the_selected_window() {
+fn the_preview_reads_the_selected_sessions_directory_with_git_but_no_screen() {
+    let (model, loaded) = update(model(Mode::Pane), Msg::Loaded(in_dirs(true)));
+    assert_eq!(selected(&model), Some(&claude_key("a")));
+    assert_eq!(loaded, [git("/a")]);
+    let (_, moved) = update(model, Msg::Action(Action::Move(1)));
+    assert_eq!(moved, [git("/b")]);
+}
+
+#[test]
+fn git_runs_again_only_after_the_interval() {
+    let first = loaded(
+        Model {
+            now: 100,
+            ..model(Mode::Pane)
+        },
+        in_dirs(true),
+    );
+    let (soon, early) = update(Model { now: 105, ..first }, Msg::Loaded(in_dirs(true)));
+    assert!(early.is_empty());
+    let (_, later) = update(Model { now: 110, ..soon }, Msg::Loaded(in_dirs(true)));
+    assert_eq!(later, [git("/a")]);
+}
+
+#[test]
+fn each_reload_reads_the_selected_windows_directory() {
     let (model, effects) = update(model(Mode::Pane), Msg::Loaded(windows(true)));
     assert_eq!(
         selected(&model),
         Some(&RowKey::Window(pane(1, 0).window_id))
     );
-    assert_eq!(effects, [capture(1, 0)]);
+    assert_eq!(effects, [git("/w1")]);
+    let (_, moved) = update(model, Msg::Action(Action::Move(1)));
+    assert_eq!(moved, [git("/w2")]);
 }
 
 #[test]
-fn moving_the_cursor_captures_the_new_window() {
+fn a_git_answer_is_kept_for_the_preview() {
     let model = loaded(model(Mode::Pane), windows(true));
-    let (_, effects) = update(model, Msg::Action(Action::Move(1)));
-    assert_eq!(effects, [capture(2, 1)]);
-}
-
-#[test]
-fn a_capture_is_kept_for_the_preview() {
-    let model = loaded(model(Mode::Pane), windows(true));
-    let captured = Captured {
-        pane: pane(1, 0).id,
-        lines: vec!["$ ls".to_owned()],
+    let changes = Some(Changes {
+        files: 1,
+        added: 2,
+        removed: 0,
+    });
+    let read = GitRead {
+        dir: "/w1".to_owned(),
+        branch: "main".to_owned(),
+        changes,
     };
-    let (model, effects) = update(model, Msg::Captured(captured.clone()));
-    assert_eq!(model.captured, Some(captured));
+    let (model, effects) = update(model, Msg::Git(read));
+    assert_eq!(model.git.as_ref().map(|g| g.branch.as_str()), Some("main"));
+    assert_eq!(model.git.and_then(|g| g.changes), changes);
     assert!(effects.is_empty());
 }
 
@@ -111,17 +157,17 @@ fn a_tmux_session_without_claude_previews_nothing() {
 }
 
 #[test]
-fn an_unfocused_sidebar_captures_nothing_until_it_gets_the_focus() {
+fn an_unfocused_sidebar_runs_no_git_until_it_gets_the_focus() {
     let (model, unfocused) = update(model(Mode::Pane), Msg::Loaded(windows(false)));
     assert!(unfocused.is_empty());
     let (_, moved) = update(model.clone(), Msg::Action(Action::Move(1)));
     assert!(moved.is_empty());
     let (_, focused) = update(model, Msg::Loaded(windows(true)));
-    assert_eq!(focused, [capture(1, 0)]);
+    assert_eq!(focused, [git("/w1")]);
 }
 
 #[test]
-fn no_capture_when_the_pane_is_too_short_for_the_preview() {
+fn no_git_when_the_pane_is_too_short_for_the_preview() {
     let short = Model {
         height: 8,
         ..model(Mode::Pane)
