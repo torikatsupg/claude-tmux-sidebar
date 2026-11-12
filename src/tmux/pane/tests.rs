@@ -57,3 +57,9 @@ fn focused_prefers_active_then_last() {
         Some(PaneId(3))
     );
 }
+
+#[test]
+fn the_format_keeps_tabs_and_newlines_of_directories_out_of_the_fields() {
+    assert!(FORMAT.contains("#{s/[\t\n]/ /:pane_current_path}"));
+    assert!(FORMAT.contains("#{s/[\t\n]/ /:pane_current_command}"));
+}

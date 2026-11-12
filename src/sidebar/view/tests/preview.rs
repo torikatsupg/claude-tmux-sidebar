@@ -175,3 +175,4 @@ fn scrolling_and_clicks_follow_the_list_height_as_the_focus_moves() {
 mod claude;
 mod content;
 mod help;
+mod window;

@@ -75,6 +75,7 @@ fn event_loop(terminal: &mut DefaultTerminal, env: &Env<'_>) -> io::Result<()> {
         indent: env.indent,
         theme: env.theme,
         preview: env.preview,
+        home: env.home.clone(),
         height,
         now: context::now(),
         ..Model::default()
@@ -97,7 +98,12 @@ fn steps(terminal: &mut DefaultTerminal, env: &Env<'_>, start: Loop) -> Flow<Loo
 fn step(terminal: &mut DefaultTerminal, env: &Env<'_>, state: Loop) -> Flow<Loop> {
     io_flow(terminal.draw(|frame| view::render(&state.model, env.messages, frame)))?;
     let input = io_flow(read_input(env))?;
-    let messages = input.into_iter().chain([tick(env.started)]).collect();
+    let answers = env.answered.try_iter();
+    let messages = input
+        .into_iter()
+        .chain(answers)
+        .chain([tick(env.started)])
+        .collect();
     let (state, forced) = apply(env, state, messages)?;
     if forced || due(env, &state) {
         reload(env, state)
@@ -140,17 +146,11 @@ fn apply(env: &Env<'_>, state: Loop, messages: Vec<Msg>) -> Flow<(Loop, bool)> {
     ControlFlow::Continue((Loop { model, ..state }, reload))
 }
 
-/// Runs the effects and folds the messages that answer them into the model. The flag asks for a reload.
+/// Runs the effects. The flag asks for a reload.
 fn settle(env: &Env<'_>, model: Model, effects: &[Effect]) -> Flow<(Model, bool)> {
-    match effect::perform(env.ctx, env.scope.me, effects) {
-        (Next::Stop, _) => ControlFlow::Break(Ok(())),
-        // Answers only fill the model in; they ask for no further effects.
-        (Next::Continue { reload }, answers) => ControlFlow::Continue((
-            answers
-                .into_iter()
-                .fold(model, |model, msg| update::update(model, msg).0),
-            reload,
-        )),
+    match effect::perform(env.ctx, env.scope.me, &env.answers, effects) {
+        Next::Stop => ControlFlow::Break(Ok(())),
+        Next::Continue { reload } => ControlFlow::Continue((model, reload)),
     }
 }
 

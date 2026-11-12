@@ -60,9 +60,10 @@ pub struct Pane {
     pub path: String,
 }
 
-/// The `list-panes -F` format that [`parse`] reads.
+/// The `list-panes -F` format that [`parse`] reads. A tab or newline in the command or directory would
+/// split the fields or the line, so tmux turns them into spaces (`s/[TAB LF]/ /`).
 pub const FORMAT: &str = "#{pane_id}\t#{session_name}\t#{window_index}\t#{pane_index}\t#{window_id}\t\
-                          #{@cts_sidebar}\t#{pane_active}\t#{pane_last}\t#{window_active}\t#{session_windows}\t#{session_attached}\t#{pane_current_command}\t#{pane_current_path}\t#{automatic-rename}\t#{window_name}";
+                          #{@cts_sidebar}\t#{pane_active}\t#{pane_last}\t#{window_active}\t#{session_windows}\t#{session_attached}\t#{s/[\t\n]/ /:pane_current_command}\t#{s/[\t\n]/ /:pane_current_path}\t#{automatic-rename}\t#{window_name}";
 
 /// Parses `list-panes -F FORMAT` output, skipping malformed lines.
 pub fn parse(output: &str) -> Vec<Pane> {

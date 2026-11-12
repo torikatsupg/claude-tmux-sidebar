@@ -31,10 +31,6 @@ pub struct Payload {
     pub background_tasks: Option<Vec<BackgroundTask>>,
     #[serde(default)]
     pub tool_use_id: String,
-    #[serde(default)]
-    pub tool_input: serde_json::Value,
-    #[serde(default)]
-    pub tool_response: serde_json::Value,
 }
 
 /// One entry of `background_tasks`.

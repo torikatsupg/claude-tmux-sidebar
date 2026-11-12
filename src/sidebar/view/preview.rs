@@ -36,7 +36,7 @@ fn context<'a>(model: &'a Model, subject: Subject<'_>, width: usize) -> Context<
     let shared = match subject {
         Subject::Claude(me) => model.snapshot.rows.iter().any(|row| {
             matches!(row, Row::Session(c) if c.record.session_id != me.record.session_id
-                && c.record.cwd == me.record.cwd)
+                && same_tree(&c.record.cwd, &me.record.cwd))
         }),
         Subject::Window(_) => false,
     };
@@ -46,7 +46,18 @@ fn context<'a>(model: &'a Model, subject: Subject<'_>, width: usize) -> Context<
         shared,
         now: model.now,
         width,
+        home: &model.home,
     }
+}
+
+/// One directory is the other or lies under it, so their changes overlap.
+fn same_tree(a: &str, b: &str) -> bool {
+    let under = |inner: &str, outer: &str| {
+        inner
+            .strip_prefix(outer)
+            .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
+    };
+    !a.is_empty() && !b.is_empty() && (under(a, b) || under(b, a))
 }
 
 /// `─ session/name ───`, in the color of tmux's pane borders; the name is cut to leave the line's ends.

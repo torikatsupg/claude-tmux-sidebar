@@ -32,9 +32,13 @@ pub fn line(model: &Model, messages: &Messages, item: &Item, width: usize) -> Li
             )
         }
         Item::Task { .. } => task(model, item, width),
-        Item::Changes { changes, shared } => self::changes(model, messages, *changes, *shared),
+        Item::Changes { changes, shared } => {
+            let text = summary(messages, *changes, *shared);
+            self::changes(model, *changes, &text, width)
+        }
         Item::Text(text) => Line::raw(truncate(text, width)),
         Item::Muted(text) => Line::styled(truncate(text, width), theme.muted),
+        Item::Path(path) => Line::styled(tail(path, width), theme.muted),
     }
 }
 
@@ -82,9 +86,24 @@ fn task(model: &Model, item: &Item, width: usize) -> Line<'static> {
     ])
 }
 
-/// `± +128 -14 (3 files)`, with `, shared` when another session works in the same directory.
-fn changes(model: &Model, messages: &Messages, changes: Changes, shared: bool) -> Line<'static> {
-    let theme = &model.theme;
+/// `path` within `width`, its start replaced by `…` at a `/` so that the end shows:
+/// `…/torikatsupg/claude-tmux-sidebar`.
+fn tail(path: &str, width: usize) -> String {
+    if text::width(path) <= width {
+        return path.to_owned();
+    }
+    let room = width.saturating_sub(1);
+    let fits = |start: usize| {
+        path.get(start..)
+            .is_some_and(|rest| text::width(rest) <= room)
+    };
+    let at_slash = path.match_indices('/').map(|(i, _)| i).find(|&i| fits(i));
+    let start = at_slash.or_else(|| path.char_indices().map(|(i, _)| i).find(|&i| fits(i)));
+    format!("…{}", start.and_then(|i| path.get(i..)).unwrap_or_default())
+}
+
+/// ` (3 files)`, with `, shared` when another session works in the same tree.
+fn summary(messages: &Messages, changes: Changes, shared: bool) -> String {
     let unit = if changes.files == 1 {
         messages.file
     } else {
@@ -95,17 +114,23 @@ fn changes(model: &Model, messages: &Messages, changes: Changes, shared: bool) -
     } else {
         String::new()
     };
+    format!(" ({} {unit}{shared})", changes.files)
+}
+
+/// `± +128 -14` and the `rest`, cut to `width`.
+fn changes(model: &Model, changes: Changes, rest: &str, width: usize) -> Line<'static> {
+    let theme = &model.theme;
+    let added = format!("+{}", changes.added);
+    let removed = format!("-{}", changes.removed);
+    let plain = format!("± {added} {removed}{rest}");
+    if text::width(&plain) > width {
+        return Line::styled(truncate(&plain, width), theme.muted);
+    }
     Line::from(vec![
         Span::styled("± ", theme.muted),
-        Span::styled(
-            format!("+{}", changes.added),
-            Style::new().fg(theme.running),
-        ),
+        Span::styled(added, Style::new().fg(theme.running)),
         Span::raw(" "),
-        Span::styled(
-            format!("-{}", changes.removed),
-            Style::new().fg(theme.critical),
-        ),
-        Span::styled(format!(" ({} {unit}{shared})", changes.files), theme.muted),
+        Span::styled(removed, Style::new().fg(theme.critical)),
+        Span::styled(rest.to_owned(), theme.muted),
     ])
 }

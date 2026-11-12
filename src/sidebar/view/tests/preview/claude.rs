@@ -11,6 +11,7 @@ fn task(kind: &str, agent: &str, text: &str, since: u64) -> Task {
         agent: agent.to_owned(),
         text: text.to_owned(),
         since,
+        foreground: false,
     }
 }
 
@@ -63,20 +64,47 @@ fn claude_model(state: Status, said: Said, height: u16) -> Model {
     }
 }
 
+/// `model` with its Claude row's record changed by `change`.
+fn with_record(model: Model, change: impl Fn(Record) -> Record) -> Model {
+    let rows = model
+        .snapshot
+        .rows
+        .iter()
+        .map(|row| match row {
+            Row::Session(c) => Row::Session(Claude {
+                record: change(c.record.clone()),
+                ..c.clone()
+            }),
+            other => other.clone(),
+        })
+        .collect();
+    Model {
+        snapshot: Snapshot {
+            rows,
+            ..model.snapshot.clone()
+        },
+        ..model
+    }
+}
+
+fn call(tool: &str, detail: &str) -> Ask {
+    Ask {
+        tool: tool.to_owned(),
+        detail: detail.to_owned(),
+    }
+}
+
 fn asking(command: &str) -> Said {
     Said {
         reply: "All done.".to_owned(),
-        ask: Some(Ask {
-            tool: "Bash".to_owned(),
-            detail: command.to_owned(),
-        }),
+        pending: vec![call("Bash", command)],
     }
 }
 
 fn replied(text: &str) -> Said {
     Said {
         reply: text.to_owned(),
-        ask: None,
+        pending: vec![],
     }
 }
 
@@ -139,15 +167,6 @@ fn a_running_session_shows_its_tool_and_tasks_without_changes() {
 }
 
 #[test]
-fn a_short_running_preview_keeps_the_counts() {
-    let model = claude_model(Status::Running, asking("cargo build"), 15);
-    assert_eq!(
-        panel(&model, 3),
-        ["⠋ Bash: cargo build", "⠋ agents 2", "⠋ bg 1"]
-    );
-}
-
-#[test]
 fn a_finished_session_shows_the_end_of_its_reply_then_tasks_and_changes() {
     let reply = "## Summary\n\nI added retry with backoff to the HTTP client.\n```go\nfor {}\n```\n全部のテストが通りました。";
     let model = claude_model(Status::Done, replied(reply), 30);
@@ -166,13 +185,5 @@ fn a_finished_session_shows_the_end_of_its_reply_then_tasks_and_changes() {
     );
 }
 
-#[test]
-fn a_short_finished_preview_keeps_the_end_of_the_reply_and_the_changes() {
-    let model = claude_model(Status::Idle, replied("one\ntwo\nthree\nfour"), 18);
-    assert_eq!(
-        panel(&model, 4),
-        ["four", "⠋ agents 2", "⠋ bg 1", "± +128 -14 (3 files)"]
-    );
-}
-
 mod rows;
+mod short;

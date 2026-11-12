@@ -4,14 +4,15 @@
 use super::body::{self, Subject};
 use super::fit::{Section, fit};
 use super::git::Changes;
+use super::work::tasks;
 use super::wrap::wrap;
 use crate::session::live::Claude;
 use crate::session::{Status, Task};
 use crate::text;
 use crate::tmux::pane::Pane;
 
-/// A subagent's type is padded to the longest of them, up to this many cells.
-const MAX_NAME_WIDTH: usize = 12;
+/// A finished session's reply keeps at least this many lines, before the counts and the changes.
+const MIN_REPLY_LINES: usize = 2;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Item {
@@ -39,6 +40,8 @@ pub enum Item {
     },
     Text(String),
     Muted(String),
+    /// A directory, cut from its start so that its end shows.
+    Path(String),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -54,6 +57,8 @@ pub struct Context<'a> {
     pub shared: bool,
     pub now: u64,
     pub width: usize,
+    /// `$HOME`, shown as `~`.
+    pub home: &'a str,
 }
 
 /// The panel's lines, at most `room`.
@@ -103,7 +108,8 @@ fn running(claude: &Claude, context: &Context<'_>) -> Vec<Section> {
         .collect()
 }
 
-/// The end of the last reply, then the tasks still running and the changes on the last line.
+/// The end of the last reply, then the work still running and the changes on the last line. Monitors are
+/// left out: they wait for events, and some never end.
 fn finished(claude: &Claude, context: &Context<'_>) -> Vec<Section> {
     let reply = Section {
         body: body::reply(claude)
@@ -112,12 +118,21 @@ fn finished(claude: &Claude, context: &Context<'_>) -> Vec<Section> {
             .map(Item::Text)
             .collect(),
         tail: true,
+        min_body: MIN_REPLY_LINES,
         ..Section::default()
     };
+    let working: Vec<Task> = claude
+        .record
+        .tasks
+        .iter()
+        .filter(|t| t.kind != "monitor")
+        .cloned()
+        .collect();
+    let changes = changes(context).map(|c| Section { first: true, ..c });
     [reply]
         .into_iter()
-        .chain(tasks(&claude.record.tasks, context.now))
-        .chain(changes(context))
+        .chain(tasks(&working, context.now))
+        .chain(changes)
         .collect()
 }
 
@@ -127,56 +142,27 @@ fn window(pane: &Pane, context: &Context<'_>) -> Vec<Section> {
         ..Section::default()
     };
     let texts = [
-        Item::Text(pane.command.clone()),
-        Item::Muted(pane.path.clone()),
-        Item::Muted(context.branch.to_owned()),
+        Item::Text(text::printable(&pane.command)),
+        Item::Path(home_relative(&text::printable(&pane.path), context.home)),
+        Item::Muted(text::printable(context.branch)),
     ];
     texts
         .into_iter()
-        .filter(|item| !matches!(item, Item::Text(t) | Item::Muted(t) if t.is_empty()))
+        .filter(
+            |item| !matches!(item, Item::Text(t) | Item::Muted(t) | Item::Path(t) if t.is_empty()),
+        )
         .map(line)
         .chain(changes(context))
         .collect()
 }
 
-/// The subagents, then the other background tasks: a count each, over one row per task.
-fn tasks(tasks: &[Task], now: u64) -> Vec<Section> {
-    let (agents, others): (Vec<&Task>, Vec<&Task>) =
-        tasks.iter().partition(|t| t.kind == "subagent");
-    [(Group::Agents, agents), (Group::Background, others)]
-        .into_iter()
-        .filter(|(_, list)| !list.is_empty())
-        .map(|(group, list)| group_section(group, &list, now))
-        .collect()
-}
-
-/// A count over one row per task: a subagent's type, or a task's kind unless it is a shell.
-fn group_section(group: Group, list: &[&Task], now: u64) -> Section {
-    let name = |t: &Task| match group {
-        Group::Agents => t.agent.clone(),
-        Group::Background if t.kind == "shell" => String::new(),
-        Group::Background => t.kind.clone(),
-    };
-    let name_width = list
-        .iter()
-        .map(|t| text::width(&name(t)))
-        .max()
-        .unwrap_or(0)
-        .min(MAX_NAME_WIDTH);
-    let row = |t: &&Task| Item::Task {
-        name: name(t),
-        name_width,
-        text: text::printable(&t.text),
-        age: now.saturating_sub(t.since),
-    };
-    Section {
-        head: vec![Item::Count {
-            group,
-            count: list.len(),
-        }],
-        body: list.iter().map(row).collect(),
-        tail: false,
-    }
+/// `path` with `home` written as `~`.
+fn home_relative(path: &str, home: &str) -> String {
+    let rest = Some(home)
+        .filter(|h| !h.is_empty())
+        .and_then(|h| path.strip_prefix(h))
+        .filter(|rest| rest.is_empty() || rest.starts_with('/'));
+    rest.map_or_else(|| path.to_owned(), |rest| format!("~{rest}"))
 }
 
 fn changes(context: &Context<'_>) -> Option<Section> {

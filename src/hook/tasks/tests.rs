@@ -1,10 +1,12 @@
 use super::*;
 
-fn payload(json: &str) -> Payload {
-    serde_json::from_str(json).unwrap_or_default()
+/// The tasks after the hook payload `json`.
+fn step(json: &str, prev: &[Task], now: u64) -> Vec<Task> {
+    let payload: Payload = serde_json::from_str(json).unwrap_or_default();
+    next(&payload, json, prev, now)
 }
 
-/// `(id, kind)`, `(agent, text)` and `since`.
+/// `(id, kind)`, `(agent, text)` and `since`, running in the background.
 fn task((id, kind): (&str, &str), (agent, text): (&str, &str), since: u64) -> Task {
     Task {
         id: id.to_owned(),
@@ -12,6 +14,15 @@ fn task((id, kind): (&str, &str), (agent, text): (&str, &str), since: u64) -> Ta
         agent: agent.to_owned(),
         text: text.to_owned(),
         since,
+        foreground: false,
+    }
+}
+
+/// A subagent the main thread waits on, under its tool call id.
+fn foreground(id: &str, agent: &str, since: u64) -> Task {
+    Task {
+        foreground: true,
+        ..task((id, "subagent"), (agent, "call"), since)
     }
 }
 
@@ -19,41 +30,34 @@ const LAUNCH: &str = r#"{"hook_event_name":"PreToolUse","session_id":"s","tool_n
     "tool_input":{"description":"Survey the docs","prompt":"…","subagent_type":"Explore"}}"#;
 
 #[test]
-fn an_agent_call_on_the_main_thread_starts_a_subagent() {
-    let started = next(&payload(LAUNCH), &[], 100);
+fn an_agent_call_on_the_main_thread_starts_a_foreground_subagent() {
+    let started = step(LAUNCH, &[], 100);
     assert_eq!(
         started,
-        [task(
-            ("t1", "subagent"),
-            ("Explore", "Survey the docs"),
-            100
-        )]
+        [Task {
+            foreground: true,
+            ..task(("t1", "subagent"), ("Explore", "Survey the docs"), 100)
+        }]
     );
-    let inside = payload(
-        r#"{"hook_event_name":"PreToolUse","session_id":"s","tool_name":"Agent","tool_use_id":"t2",
-            "agent_id":"a1","tool_input":{"description":"nested"}}"#,
-    );
-    assert_eq!(next(&inside, &started, 120), started);
+    let inside = r#"{"hook_event_name":"PreToolUse","session_id":"s","tool_name":"Agent","tool_use_id":"t2",
+        "agent_id":"a1","tool_input":{"description":"nested"}}"#;
+    assert_eq!(step(inside, &started, 120), started);
 }
 
 #[test]
 fn a_finished_agent_call_ends_its_subagent() {
-    let started = next(&payload(LAUNCH), &[], 100);
-    let done = payload(
-        r#"{"hook_event_name":"PostToolUse","session_id":"s","tool_name":"Agent","tool_use_id":"t1",
-            "tool_response":{"status":"completed","content":[]}}"#,
-    );
-    assert!(next(&done, &started, 160).is_empty());
+    let started = step(LAUNCH, &[], 100);
+    let done = r#"{"hook_event_name":"PostToolUse","session_id":"s","tool_name":"Agent","tool_use_id":"t1",
+        "tool_response":{"status":"completed","content":[]}}"#;
+    assert!(step(done, &started, 160).is_empty());
 }
 
 #[test]
 fn a_background_agent_goes_by_its_agent_id_until_it_stops() {
-    let started = next(&payload(LAUNCH), &[], 100);
-    let launched = payload(
-        r#"{"hook_event_name":"PostToolUse","session_id":"s","tool_name":"Agent","tool_use_id":"t1",
-            "tool_response":{"status":"async_launched","agentId":"a9","description":"Survey the docs"}}"#,
-    );
-    let running = next(&launched, &started, 101);
+    let started = step(LAUNCH, &[], 100);
+    let launched = r#"{"hook_event_name":"PostToolUse","session_id":"s","tool_name":"Agent","tool_use_id":"t1",
+        "tool_response":{"status":"async_launched","agentId":"a9","description":"Survey the docs"}}"#;
+    let running = step(launched, &started, 101);
     assert_eq!(
         running,
         [task(
@@ -62,8 +66,8 @@ fn a_background_agent_goes_by_its_agent_id_until_it_stops() {
             100
         )]
     );
-    let stopped = payload(r#"{"hook_event_name":"SubagentStop","session_id":"s","agent_id":"a9"}"#);
-    assert!(next(&stopped, &running, 200).is_empty());
+    let stopped = r#"{"hook_event_name":"SubagentStop","session_id":"s","agent_id":"a9"}"#;
+    assert!(step(stopped, &running, 200).is_empty());
 }
 
 const STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s","background_tasks":[
@@ -76,10 +80,10 @@ const STOP: &str = r#"{"hook_event_name":"Stop","session_id":"s","background_tas
 fn stop_replaces_the_list_with_the_running_background_tasks() {
     let prev = [
         task(("a9", "subagent"), ("Explore", "Survey the docs"), 100),
-        task(("t5", "subagent"), ("Plan", "lost foreground call"), 90),
+        foreground("t5", "Plan", 90),
     ];
     assert_eq!(
-        next(&payload(STOP), &prev, 300),
+        step(STOP, &prev, 300),
         [
             task(("a9", "subagent"), ("Explore", "Survey the docs"), 100),
             task(("b1", "shell"), ("", "cargo build --release"), 300),
@@ -89,30 +93,50 @@ fn stop_replaces_the_list_with_the_running_background_tasks() {
 }
 
 #[test]
-fn a_subagent_stop_with_the_session_tasks_refreshes_the_list_too() {
-    let prev = [task(("a9", "subagent"), ("Explore", "x"), 100)];
+fn a_subagent_stop_removes_only_its_own_entry() {
+    let prev = [
+        task(("a9", "subagent"), ("Explore", "x"), 100),
+        foreground("t5", "Plan", 90),
+        foreground("t6", "review", 95),
+    ];
     let stop = STOP.replace("\"Stop\"", "\"SubagentStop\"").replace(
         "\"background_tasks\"",
         "\"agent_id\":\"a9\",\"background_tasks\"",
     );
-    assert_eq!(next(&payload(&stop), &prev, 300).len(), 3);
+    assert_eq!(
+        step(&stop, &prev, 300),
+        [foreground("t5", "Plan", 90), foreground("t6", "review", 95)]
+    );
 }
 
 #[test]
-fn a_stop_without_tasks_or_a_new_process_clears_the_list() {
+fn a_new_prompt_or_a_failed_stop_drops_only_the_foreground_subagents() {
+    let background = task(("a9", "subagent"), ("Explore", "x"), 100);
+    let prev = [background.clone(), foreground("t5", "Plan", 90)];
+    let prompt = r#"{"hook_event_name":"UserPromptSubmit","session_id":"s","prompt":"hi"}"#;
+    assert_eq!(step(prompt, &prev, 300), std::slice::from_ref(&background));
+    let failure = r#"{"hook_event_name":"StopFailure","session_id":"s"}"#;
+    assert_eq!(step(failure, &prev, 300), std::slice::from_ref(&background));
+    let old_stop = r#"{"hook_event_name":"Stop","session_id":"s"}"#;
+    assert_eq!(step(old_stop, &prev, 300), [background]);
+}
+
+#[test]
+fn a_new_process_starts_with_no_tasks() {
     let prev = [task(("a9", "subagent"), ("Explore", "x"), 100)];
-    let bare = payload(r#"{"hook_event_name":"StopFailure","session_id":"s"}"#);
-    assert!(next(&bare, &prev, 300).is_empty());
-    let start = payload(r#"{"hook_event_name":"SessionStart","session_id":"s","source":"resume"}"#);
-    assert!(next(&start, &prev, 300).is_empty());
-    let other = payload(r#"{"hook_event_name":"UserPromptSubmit","session_id":"s","prompt":"hi"}"#);
-    assert_eq!(next(&other, &prev, 300), prev);
+    let start = r#"{"hook_event_name":"SessionStart","session_id":"s","source":"resume"}"#;
+    assert!(step(start, &prev, 300).is_empty());
+    let other = r#"{"hook_event_name":"PostToolUse","session_id":"s","tool_name":"Bash"}"#;
+    assert_eq!(step(other, &prev, 300), prev);
 }
 
 #[test]
 fn texts_lose_control_and_format_characters() {
-    let launch = LAUNCH.replace("Survey the docs", "Survey\\u202e the\\u0007 docs");
-    let started = next(&payload(&launch), &[], 100);
+    let launch = LAUNCH.replace(
+        "Survey the docs",
+        "Survey\\u202e the\\u0007 docs\\udb40\\udc41",
+    );
+    let started = step(&launch, &[], 100);
     assert_eq!(
         started.first().map(|t| t.text.as_str()),
         Some("Survey the docs")

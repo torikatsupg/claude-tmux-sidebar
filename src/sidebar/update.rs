@@ -30,6 +30,8 @@ pub struct Model {
     pub preview: Preview,
     /// What `git` said about the preview's directory; shown only while it is still that directory.
     pub git: Option<Git>,
+    /// `$HOME`, written as `~` in the preview.
+    pub home: String,
 }
 
 #[derive(Debug, PartialEq, Eq)]

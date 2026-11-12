@@ -47,7 +47,7 @@ fn the_reply_is_the_text_of_the_last_main_thread_answer() {
     ];
     let said = said(&lines.join("\n"));
     assert_eq!(said.reply, "Done.\nAll tests pass.\n\nBye");
-    assert_eq!(said.ask, None);
+    assert!(said.pending.is_empty());
     assert_eq!(super::said("nothing"), Said::default());
 }
 
@@ -66,10 +66,10 @@ fn a_tool_use_without_a_result_is_what_claude_asks_for() {
         ),
     ];
     assert_eq!(
-        said(&lines.join("\n")).ask,
-        Some(ask("Bash", "rm -rf build"))
+        said(&lines.join("\n")).pending,
+        [ask("Bash", "rm -rf build")]
     );
-    assert_eq!(said(&lines[..2].join("\n")).ask, None);
+    assert!(said(&lines[..2].join("\n")).pending.is_empty());
 }
 
 #[test]
@@ -82,8 +82,8 @@ fn edits_and_writes_show_their_file() {
         &tool_use("w", "Write", r#"{"file_path":"/src/b.rs","content":"y"}"#),
         false,
     );
-    assert_eq!(said(&edit).ask, Some(ask("Edit", "/src/a.rs")));
-    assert_eq!(said(&write).ask, Some(ask("Write", "/src/b.rs")));
+    assert_eq!(said(&edit).pending, [ask("Edit", "/src/a.rs")]);
+    assert_eq!(said(&write).pending, [ask("Write", "/src/b.rs")]);
 }
 
 #[test]
@@ -98,10 +98,10 @@ fn other_tools_show_one_telling_field_or_just_their_name() {
     );
     let odd = assistant(&tool_use("o", "mcp__x__do", r#"{"count":3}"#), false);
     assert_eq!(
-        said(&fetch).ask,
-        Some(ask("WebFetch", "https://example.com"))
+        said(&fetch).pending,
+        [ask("WebFetch", "https://example.com")]
     );
-    assert_eq!(said(&odd).ask, Some(ask("mcp__x__do", "")));
+    assert_eq!(said(&odd).pending, [ask("mcp__x__do", "")]);
 }
 
 #[test]
@@ -109,13 +109,43 @@ fn a_question_shows_its_text() {
     let input = r#"{"questions":[{"question":"Which database?","header":"DB","options":[]}]}"#;
     let question = assistant(&tool_use("q", "AskUserQuestion", input), false);
     assert_eq!(
-        said(&question).ask,
-        Some(ask("AskUserQuestion", "Which database?"))
+        said(&question).pending,
+        [ask("AskUserQuestion", "Which database?")]
     );
 }
 
 #[test]
 fn a_subagent_tool_use_is_not_the_main_ask() {
     let side = assistant(&tool_use("s", "Bash", r#"{"command":"ls"}"#), true);
-    assert_eq!(said(&side).ask, None);
+    assert!(said(&side).pending.is_empty());
+}
+
+fn prompt(text: &str) -> String {
+    format!(r#"{{"type":"user","message":{{"role":"user","content":"{text}"}}}}"#)
+}
+
+#[test]
+fn only_calls_since_the_last_prompt_are_pending() {
+    let lines = [
+        assistant(&tool_use("t1", "Bash", r#"{"command":"old"}"#), false),
+        prompt("next task"),
+        assistant(&tool_use("t2", "Bash", r#"{"command":"new"}"#), false),
+    ];
+    assert_eq!(said(&lines.join("\n")).pending, [ask("Bash", "new")]);
+    assert!(said(&lines[..2].join("\n")).pending.is_empty());
+}
+
+#[test]
+fn parallel_calls_stay_pending_in_call_order() {
+    let calls = format!(
+        "{},{}",
+        tool_use("r", "Read", r#"{"file_path":"/a"}"#),
+        tool_use("b", "Bash", r#"{"command":"make"}"#)
+    );
+    let lines = [assistant(&calls, false), result("r")];
+    assert_eq!(
+        said(&assistant(&calls, false)).pending,
+        [ask("Read", "/a"), ask("Bash", "make")]
+    );
+    assert_eq!(said(&lines.join("\n")).pending, [ask("Bash", "make")]);
 }

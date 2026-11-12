@@ -80,3 +80,33 @@ fn records_the_subagents_until_they_stop() -> io::Result<()> {
     assert_eq!(field(&state_dir, "state").as_deref(), Some("running"));
     Ok(())
 }
+
+#[test]
+fn parallel_agent_calls_are_all_recorded() -> io::Result<()> {
+    let dir = tempfile::tempdir()?;
+    let state_dir = dir.path().join("state");
+    hook(
+        &state_dir,
+        r#"{"hook_event_name":"UserPromptSubmit","session_id":"ci","prompt":"go"}"#,
+    )?;
+    let calls: Vec<String> = (0..8)
+        .map(|i| {
+            format!(
+                r#"{{"hook_event_name":"PreToolUse","session_id":"ci","tool_name":"Agent","tool_use_id":"t{i}",
+                    "tool_input":{{"description":"part {i}","subagent_type":"Explore"}}}}"#
+            )
+        })
+        .collect();
+    std::thread::scope(|scope| {
+        let runs: Vec<_> = calls
+            .iter()
+            .map(|call| scope.spawn(|| hook(&state_dir, call)))
+            .collect();
+        runs.into_iter().try_for_each(|run| {
+            run.join()
+                .unwrap_or_else(|_| Err(io::Error::other("panicked")))
+        })
+    })?;
+    assert_eq!(tasks(&state_dir).len(), 8);
+    Ok(())
+}

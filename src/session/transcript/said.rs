@@ -10,8 +10,9 @@ use serde_json::Value;
 pub struct Said {
     /// The text blocks of the last main-thread assistant message with text, without thinking or tool calls.
     pub reply: String,
-    /// The last main-thread tool call without a result: what a waiting session asks for.
-    pub ask: Option<Ask>,
+    /// The main-thread tool calls without a result since the user's last prompt, in call order: among them
+    /// is what a waiting session asks for, or the tool a running one is using.
+    pub pending: Vec<Ask>,
 }
 
 /// A tool call and its main input: the command, the file, the question, or one telling field.
@@ -41,17 +42,36 @@ const FIELDS: [&str; 6] = ["url", "pattern", "path", "query", "description", "pr
 
 /// Reads `text` (JSON lines) for what Claude said last.
 pub fn said(text: &str) -> Said {
-    let blocks: Vec<(String, Vec<Value>)> = text
+    let entries: Vec<(String, Vec<Value>)> = text
         .lines()
-        .filter(|line| line.contains("\"assistant\"") || line.contains("\"tool_result\""))
+        .filter(|line| line.contains("\"assistant\"") || line.contains("\"user\""))
         .filter_map(|line| serde_json::from_str::<Entry>(line).ok())
         .filter(|e| !e.sidechain)
-        .filter_map(|e| Some((e.kind, e.message?.content.as_array()?.clone())))
+        .filter_map(|e| Some((e.kind, blocks(e.message?.content))))
         .collect();
     Said {
-        reply: reply(&blocks),
-        ask: ask(&blocks),
+        reply: reply(&entries),
+        pending: pending(since_prompt(&entries)),
     }
+}
+
+/// A message's content blocks; a prompt typed as plain text is one text block.
+fn blocks(content: Value) -> Vec<Value> {
+    match content {
+        Value::Array(blocks) => blocks,
+        Value::String(text) => vec![serde_json::json!({"type": "text", "text": text})],
+        _ => Vec::new(),
+    }
+}
+
+/// The entries after the user's last prompt (a user message with text rather than tool results).
+fn since_prompt(entries: &[(String, Vec<Value>)]) -> &[(String, Vec<Value>)] {
+    let prompt = entries.iter().rposition(|(kind, blocks)| {
+        kind == "user"
+            && of_kind(blocks, "text").next().is_some()
+            && of_kind(blocks, "tool_result").next().is_none()
+    });
+    prompt.map_or(entries, |i| entries.get(i + 1..).unwrap_or_default())
 }
 
 fn of_kind<'a>(blocks: &'a [Value], kind: &'a str) -> impl Iterator<Item = &'a Value> {
@@ -75,7 +95,7 @@ fn reply(entries: &[(String, Vec<Value>)]) -> String {
         .unwrap_or_default()
 }
 
-fn ask(entries: &[(String, Vec<Value>)]) -> Option<Ask> {
+fn pending(entries: &[(String, Vec<Value>)]) -> Vec<Ask> {
     let answered: HashSet<&str> = entries
         .iter()
         .filter(|(kind, _)| kind == "user")
@@ -90,7 +110,6 @@ fn ask(entries: &[(String, Vec<Value>)]) -> Option<Ask> {
             let id = b.get("id").and_then(Value::as_str).unwrap_or_default();
             !answered.contains(id)
         })
-        .last()
         .map(|b| {
             let tool = b.get("name").and_then(Value::as_str).unwrap_or_default();
             let input = b.get("input").unwrap_or(&Value::Null);
@@ -99,6 +118,7 @@ fn ask(entries: &[(String, Vec<Value>)]) -> Option<Ask> {
                 detail: detail(tool, input),
             }
         })
+        .collect()
 }
 
 fn detail(tool: &str, input: &Value) -> String {

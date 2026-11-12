@@ -6,6 +6,10 @@ use crate::sidebar::snapshot::Snapshot;
 use crate::text::{printable, visible};
 use crate::tmux::pane::Pane;
 
+/// The hooks report `AskUserQuestion` as this detail.
+const ASK_DETAIL: &str = "Question";
+const ASK_TOOL: &str = "AskUserQuestion";
+
 /// What the cursor row stands for.
 #[derive(Clone, Copy, Debug)]
 pub enum Subject<'a> {
@@ -29,15 +33,28 @@ pub fn subject<'a>(snapshot: &'a Snapshot, selected: Option<&RowKey>) -> Option<
         })
 }
 
-/// What the session's last tool call without a result is: `Tool: detail` on one line, or the question of
-/// `AskUserQuestion`. While waiting, it is what Claude asks for; while running, the tool at work.
+/// What the session is waiting on or working with, from the transcript: `Tool: detail` on one line, or
+/// the question of `AskUserQuestion`. It is the first call without a result of the tool the hooks reported,
+/// and nothing while a subagent asks, since its calls are not in the main transcript.
 pub fn ask(claude: &Claude) -> Option<String> {
-    let ask = claude.latest.as_ref()?.said.ask.as_ref()?;
+    let record = &claude.record;
+    let tool = match record.detail.as_str() {
+        ASK_DETAIL => ASK_TOOL,
+        tool => tool,
+    };
+    let ask = claude
+        .latest
+        .as_ref()?
+        .said
+        .pending
+        .iter()
+        .filter(|_| record.agent.is_empty())
+        .find(|a| a.tool == tool)?;
     let detail = printable(&ask.detail);
     Some(match (ask.tool.as_str(), detail.is_empty()) {
-        (_, true) => ask.tool.clone(),
-        ("AskUserQuestion", false) => detail,
-        (tool, false) => format!("{tool}: {detail}"),
+        (_, true) => printable(&ask.tool),
+        (ASK_TOOL, false) => detail,
+        (tool, false) => format!("{}: {detail}", printable(tool)),
     })
 }
 

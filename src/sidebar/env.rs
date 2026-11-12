@@ -1,8 +1,10 @@
 //! The settings a sidebar reads once, when it opens.
 
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Instant;
 
 use super::preview::{self, Preview};
+use super::update::Msg;
 use super::{Mode, indent::Indent, label::Label, snapshot, theme::Theme};
 use crate::context::Context;
 use crate::i18n::{self, Messages};
@@ -17,6 +19,11 @@ pub struct Env<'a> {
     pub theme: Theme,
     pub preview: Preview,
     pub messages: &'static Messages,
+    /// `$HOME`, read once.
+    pub home: String,
+    /// Where effects that take time send their answers, and where the loop picks them up.
+    pub answers: Sender<Msg>,
+    pub answered: Receiver<Msg>,
     /// The spinner runs on the clock, not on the number of events.
     pub started: Instant,
 }
@@ -28,6 +35,7 @@ impl<'a> Env<'a> {
             Mode::Popup { origin } => (origin, true),
         };
         let lang = tmux::global_option("@cts_lang");
+        let (answers, answered) = mpsc::channel();
         Env {
             ctx,
             scope: snapshot::Scope {
@@ -46,6 +54,9 @@ impl<'a> Env<'a> {
                 ..in_popup(Preview::from_options(tmux::global_option), popup)
             },
             messages: i18n::messages(lang.as_deref()),
+            home: std::env::var("HOME").unwrap_or_default(),
+            answers,
+            answered,
             started: Instant::now(),
         }
     }

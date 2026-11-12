@@ -2,6 +2,7 @@
 
 pub mod context_window;
 pub mod live;
+pub mod lock;
 pub mod statusline;
 pub mod store;
 pub mod transcript;
@@ -94,6 +95,9 @@ pub struct Task {
     /// When it started, in seconds since the epoch.
     #[serde(default)]
     pub since: u64,
+    /// A subagent the main thread waits on, under its tool call id; it ends with the turn.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub foreground: bool,
 }
 
 impl Record {
