@@ -22,12 +22,21 @@ pub struct Git {
     pub changes: Option<Changes>,
 }
 
+/// A read of `dir`, and of the repositories that `others` (other sessions' directories) belong to.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GitAsk {
+    pub dir: String,
+    pub others: Vec<String>,
+}
+
 /// The answer to one read.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GitRead {
     pub dir: String,
     pub branch: String,
     pub changes: Option<Changes>,
+    /// Each directory asked about and its repository's top directory; empty outside a repository.
+    pub tops: Vec<(String, String)>,
 }
 
 /// ` 3 files changed, 128 insertions(+), 14 deletions(-)`; `None` when nothing changed or for anything else.
@@ -121,6 +130,7 @@ mod tests {
             dir: dir.to_owned(),
             branch: "main".to_owned(),
             changes: None,
+            tops: vec![],
         };
         let git = answered(Some(asked(None, "/a", 1)), read("/a"));
         assert_eq!(git.as_ref().map(|g| g.branch.as_str()), Some("main"));

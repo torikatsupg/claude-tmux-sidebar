@@ -1,11 +1,11 @@
 //! Runs the effects that [`update`](super::update::update) asks for.
 
-mod git;
+pub mod git;
 
 use std::sync::mpsc::Sender;
 
-use super::preview;
-use super::update::{Effect, Msg, Target};
+use super::preview::{self, GitAsk};
+use super::update::{Effect, Target};
 use crate::context::Context;
 use crate::text::shell_quote;
 use crate::tmux::{self, pane::PaneId};
@@ -17,11 +17,11 @@ pub enum Next {
     Stop,
 }
 
-/// Runs `effects`, and returns what to do next. Effects that take time (git) answer later through `answers`.
+/// Runs `effects`, and returns what to do next. git runs on its own thread and answers later.
 pub fn perform(
     ctx: &Context,
     me: Option<PaneId>,
-    answers: &Sender<Msg>,
+    git: &Sender<GitAsk>,
     effects: &[Effect],
 ) -> Next {
     effects
@@ -35,8 +35,8 @@ pub fn perform(
                     run(ctx, me, goto);
                     Next::Continue { reload: true }
                 }
-                (next, Effect::Git(dir)) => {
-                    git::spawn(dir.clone(), answers.clone());
+                (next, Effect::Git(ask)) => {
+                    let _ = git.send(ask.clone());
                     next
                 }
                 (next, effect) => {

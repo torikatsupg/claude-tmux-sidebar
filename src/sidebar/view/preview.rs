@@ -1,5 +1,7 @@
 //! The preview below the list: a rule naming the cursor row, then its status panel.
 
+use std::collections::BTreeMap;
+
 use ratatui::text::{Line, Span};
 
 use super::{panel, session_name, window};
@@ -36,7 +38,7 @@ fn context<'a>(model: &'a Model, subject: Subject<'_>, width: usize) -> Context<
     let shared = match subject {
         Subject::Claude(me) => model.snapshot.rows.iter().any(|row| {
             matches!(row, Row::Session(c) if c.record.session_id != me.record.session_id
-                && same_tree(&c.record.cwd, &me.record.cwd))
+                && same_tree(&model.tops, &c.record.cwd, &me.record.cwd))
         }),
         Subject::Window(_) => false,
     };
@@ -50,14 +52,14 @@ fn context<'a>(model: &'a Model, subject: Subject<'_>, width: usize) -> Context<
     }
 }
 
-/// One directory is the other or lies under it, so their changes overlap.
-fn same_tree(a: &str, b: &str) -> bool {
-    let under = |inner: &str, outer: &str| {
-        inner
-            .strip_prefix(outer)
-            .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
-    };
-    !a.is_empty() && !b.is_empty() && (under(a, b) || under(b, a))
+/// Two directories in the same repository (by the top directories git told), or, when either is not known
+/// to be in one, the same directory.
+fn same_tree(tops: &BTreeMap<String, String>, a: &str, b: &str) -> bool {
+    let top = |dir: &str| tops.get(dir).filter(|t| !t.is_empty());
+    match (top(a), top(b)) {
+        (Some(x), Some(y)) => x == y,
+        _ => !a.is_empty() && a == b,
+    }
 }
 
 /// `─ session/name ───`, in the color of tmux's pane borders; the name is cut to leave the line's ends.

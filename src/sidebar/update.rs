@@ -4,7 +4,9 @@ mod activate;
 mod layout;
 mod preview;
 
-use super::preview::{Git, GitRead, Preview};
+use std::collections::BTreeMap;
+
+use super::preview::{Git, GitAsk, GitRead, Preview};
 use super::rows::{self, Row, RowKey};
 use super::selection::{self, Selection};
 use super::snapshot::Snapshot;
@@ -30,6 +32,8 @@ pub struct Model {
     pub preview: Preview,
     /// What `git` said about the preview's directory; shown only while it is still that directory.
     pub git: Option<Git>,
+    /// The repository top directory of each session directory git was asked about; empty outside one.
+    pub tops: BTreeMap<String, String>,
     /// `$HOME`, written as `~` in the preview.
     pub home: String,
 }
@@ -72,7 +76,7 @@ pub enum Effect {
     Reload,
     Exit,
     /// Read the branch and change summary of a directory; answered with [`Msg::Git`].
-    Git(String),
+    Git(GitAsk),
     /// Show the tail of a pane in a tmux popup.
     PreviewPopup(PaneId),
 }
@@ -100,13 +104,16 @@ pub fn update(model: Model, msg: Msg) -> (Model, Vec<Effect>) {
         Msg::Resized { height } => (Model { height, ..model }, vec![]),
         Msg::Clicked { y } => clicked(model, y),
         Msg::Action(action) => act(model, action),
-        Msg::Git(read) => (
-            Model {
-                git: super::preview::git::answered(model.git.clone(), read),
-                ..model
-            },
-            vec![],
-        ),
+        Msg::Git(read) => {
+            let tops = model
+                .tops
+                .clone()
+                .into_iter()
+                .chain(read.tops.clone())
+                .collect();
+            let git = super::preview::git::answered(model.git.clone(), read);
+            (Model { git, tops, ..model }, vec![])
+        }
     }
 }
 

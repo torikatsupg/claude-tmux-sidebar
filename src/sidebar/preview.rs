@@ -8,7 +8,7 @@ mod work;
 mod wrap;
 
 pub use body::{Subject, ask, subject, tidy};
-pub use git::{Changes, Git, GitRead, shortstat};
+pub use git::{Changes, Git, GitAsk, GitRead, shortstat};
 pub use panel::{Context, Group, Item, items};
 pub use wrap::wrap;
 

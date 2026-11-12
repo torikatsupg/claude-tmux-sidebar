@@ -148,7 +148,7 @@ fn apply(env: &Env<'_>, state: Loop, messages: Vec<Msg>) -> Flow<(Loop, bool)> {
 
 /// Runs the effects. The flag asks for a reload.
 fn settle(env: &Env<'_>, model: Model, effects: &[Effect]) -> Flow<(Model, bool)> {
-    match effect::perform(env.ctx, env.scope.me, &env.answers, effects) {
+    match effect::perform(env.ctx, env.scope.me, &env.git, effects) {
         Next::Stop => ControlFlow::Break(Ok(())),
         Next::Continue { reload } => ControlFlow::Continue((model, reload)),
     }

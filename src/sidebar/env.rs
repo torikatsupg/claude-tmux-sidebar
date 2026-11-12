@@ -3,6 +3,8 @@
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Instant;
 
+use super::effect;
+use super::preview::GitAsk;
 use super::preview::{self, Preview};
 use super::update::Msg;
 use super::{Mode, indent::Indent, label::Label, snapshot, theme::Theme};
@@ -21,8 +23,8 @@ pub struct Env<'a> {
     pub messages: &'static Messages,
     /// `$HOME`, read once.
     pub home: String,
-    /// Where effects that take time send their answers, and where the loop picks them up.
-    pub answers: Sender<Msg>,
+    /// Where git requests go, and where the loop picks up the answers.
+    pub git: Sender<GitAsk>,
     pub answered: Receiver<Msg>,
     /// The spinner runs on the clock, not on the number of events.
     pub started: Instant,
@@ -55,7 +57,7 @@ impl<'a> Env<'a> {
             },
             messages: i18n::messages(lang.as_deref()),
             home: std::env::var("HOME").unwrap_or_default(),
-            answers,
+            git: effect::git::worker(answers),
             answered,
             started: Instant::now(),
         }

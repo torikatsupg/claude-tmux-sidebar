@@ -2,32 +2,55 @@
 
 use std::io::Read;
 use std::process::{Child, Command, Stdio};
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{self, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::sidebar::preview::{self, GitRead};
+use crate::sidebar::preview::{self, GitAsk, GitRead};
 use crate::sidebar::update::Msg;
 
 /// A `git` that takes longer is stopped; the preview then shows no branch or changes.
 const TIMEOUT: Duration = Duration::from_secs(3);
 const POLL: Duration = Duration::from_millis(10);
 
-/// Reads `dir` on its own thread and sends the answer.
-pub fn spawn(dir: String, answers: Sender<Msg>) {
+/// Starts the one thread that runs git, and returns where to send it requests. It reads only the newest
+/// request waiting, so holding a movement key does not pile up git processes.
+pub fn worker(answers: Sender<Msg>) -> Sender<GitAsk> {
+    let (requests, waiting) = mpsc::channel::<GitAsk>();
     thread::spawn(move || {
-        let branch = run(
-            "git",
-            &args(&dir, &["rev-parse", "--abbrev-ref", "HEAD"]),
-            TIMEOUT,
-        );
-        let stat = run(
-            "git",
-            &args(&dir, &["diff", "--shortstat", "HEAD"]),
-            TIMEOUT,
-        );
-        let _ = answers.send(answer(&dir, branch, stat.as_deref()));
+        while let Ok(first) = waiting.recv() {
+            let ask = newest(first, waiting.try_iter().collect());
+            if answers.send(read(&ask)).is_err() {
+                return;
+            }
+        }
     });
+    requests
+}
+
+fn newest(first: GitAsk, rest: Vec<GitAsk>) -> GitAsk {
+    rest.into_iter().last().unwrap_or(first)
+}
+
+fn read(ask: &GitAsk) -> Msg {
+    let git = |dir: &str, command: &[&str]| run("git", &args(dir, command), TIMEOUT);
+    let dir = ask.dir.as_str();
+    let tops = [dir]
+        .into_iter()
+        .chain(ask.others.iter().map(String::as_str))
+        .map(|d| {
+            let top = git(d, &["rev-parse", "--show-toplevel"]).unwrap_or_default();
+            (d.to_owned(), top)
+        })
+        .collect();
+    Msg::Git(GitRead {
+        tops,
+        ..answer(
+            dir,
+            git(dir, &["rev-parse", "--abbrev-ref", "HEAD"]),
+            git(dir, &["diff", "--shortstat", "HEAD"]).as_deref(),
+        )
+    })
 }
 
 /// `git` in `dir` without optional locks (it never blocks the user's own git), without the file system
@@ -89,12 +112,13 @@ fn finished(child: &mut Child) -> Option<bool> {
 }
 
 /// What git answered about `dir`; nothing outside a repository.
-fn answer(dir: &str, branch: Option<String>, stat: Option<&str>) -> Msg {
-    Msg::Git(GitRead {
+fn answer(dir: &str, branch: Option<String>, stat: Option<&str>) -> GitRead {
+    GitRead {
         dir: dir.to_owned(),
         branch: branch.unwrap_or_default(),
         changes: stat.and_then(preview::shortstat),
-    })
+        tops: Vec::new(),
+    }
 }
 
 #[cfg(test)]

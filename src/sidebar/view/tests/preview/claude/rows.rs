@@ -31,11 +31,41 @@ fn beside(cwd: &str) -> Model {
 }
 
 #[test]
-fn changes_shared_within_the_same_tree_say_so() {
+fn changes_shared_within_the_same_repository_say_so() {
     let shared = "± +128 -14 (3 files, shared)".to_owned();
-    assert!(panel(&beside("/src/api/web"), 8).contains(&shared));
-    assert!(panel(&beside("/src"), 8).contains(&shared));
-    assert!(!panel(&beside("/src/apix"), 8).contains(&shared));
+    let with_tops = |other: &str, tops: &[(&str, &str)]| Model {
+        tops: tops
+            .iter()
+            .map(|(dir, top)| ((*dir).to_owned(), (*top).to_owned()))
+            .collect(),
+        ..beside(other)
+    };
+    let same_repo = with_tops(
+        "/src/api/web",
+        &[("/src/api", "/src"), ("/src/api/web", "/src")],
+    );
+    assert!(panel(&same_repo, 8).contains(&shared));
+    let worktree = "/src/api/.claude/worktrees/x";
+    let own_tree = with_tops(worktree, &[("/src/api", "/src/api"), (worktree, worktree)]);
+    assert!(!panel(&own_tree, 8).contains(&shared));
+    assert!(!panel(&beside("/src/api/web"), 8).contains(&shared));
+    assert!(!panel(&beside("/"), 8).contains(&shared));
+    assert!(panel(&beside("/src/api"), 8).contains(&shared));
+}
+
+#[test]
+fn a_waiting_subagent_row_shows_its_tool_in_place_of_the_prompt() {
+    let model = with_record(claude_model(Status::Waiting, asking("ls"), 30), |record| {
+        Record {
+            agent: "a1".to_owned(),
+            prompt: "the last prompt".to_owned(),
+            ..record
+        }
+    });
+    assert_eq!(
+        screen(&model, &EN).get(4).map(String::as_str),
+        Some("└ Bash                        42% ")
+    );
 }
 
 #[test]

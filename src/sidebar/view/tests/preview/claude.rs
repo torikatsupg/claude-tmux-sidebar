@@ -75,6 +75,10 @@ fn with_record(model: Model, change: impl Fn(Record) -> Record) -> Model {
                 record: change(c.record.clone()),
                 ..c.clone()
             }),
+            Row::Detail(c) => Row::Detail(Claude {
+                record: change(c.record.clone()),
+                ..c.clone()
+            }),
             other => other.clone(),
         })
         .collect();

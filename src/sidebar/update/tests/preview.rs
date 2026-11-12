@@ -1,5 +1,5 @@
 use super::*;
-use crate::sidebar::preview::{Changes, GitRead, Mode, Preview};
+use crate::sidebar::preview::{Changes, GitAsk, GitRead, Mode, Preview};
 
 fn model(mode: Mode) -> Model {
     Model {
@@ -13,7 +13,14 @@ fn model(mode: Mode) -> Model {
 }
 
 fn git(dir: &str) -> Effect {
-    Effect::Git(dir.to_owned())
+    asking(dir, &[])
+}
+
+fn asking(dir: &str, others: &[&str]) -> Effect {
+    Effect::Git(GitAsk {
+        dir: dir.to_owned(),
+        others: others.iter().map(|&o| o.to_owned()).collect(),
+    })
 }
 
 /// A pane working in `/w<id>`.
@@ -64,24 +71,9 @@ fn in_dirs(sidebar_active: bool) -> Snapshot {
 fn the_preview_reads_the_selected_sessions_directory_with_git_but_no_screen() {
     let (model, loaded) = update(model(Mode::Pane), Msg::Loaded(in_dirs(true)));
     assert_eq!(selected(&model), Some(&claude_key("a")));
-    assert_eq!(loaded, [git("/a")]);
+    assert_eq!(loaded, [asking("/a", &["/b"])]);
     let (_, moved) = update(model, Msg::Action(Action::Move(1)));
-    assert_eq!(moved, [git("/b")]);
-}
-
-#[test]
-fn git_runs_again_only_after_the_interval() {
-    let first = loaded(
-        Model {
-            now: 100,
-            ..model(Mode::Pane)
-        },
-        in_dirs(true),
-    );
-    let (soon, early) = update(Model { now: 105, ..first }, Msg::Loaded(in_dirs(true)));
-    assert!(early.is_empty());
-    let (_, later) = update(Model { now: 110, ..soon }, Msg::Loaded(in_dirs(true)));
-    assert_eq!(later, [git("/a")]);
+    assert_eq!(moved, [asking("/b", &["/a"])]);
 }
 
 #[test]
@@ -94,25 +86,6 @@ fn each_reload_reads_the_selected_windows_directory() {
     assert_eq!(effects, [git("/w1")]);
     let (_, moved) = update(model, Msg::Action(Action::Move(1)));
     assert_eq!(moved, [git("/w2")]);
-}
-
-#[test]
-fn a_git_answer_is_kept_for_the_preview() {
-    let model = loaded(model(Mode::Pane), windows(true));
-    let changes = Some(Changes {
-        files: 1,
-        added: 2,
-        removed: 0,
-    });
-    let read = GitRead {
-        dir: "/w1".to_owned(),
-        branch: "main".to_owned(),
-        changes,
-    };
-    let (model, effects) = update(model, Msg::Git(read));
-    assert_eq!(model.git.as_ref().map(|g| g.branch.as_str()), Some("main"));
-    assert_eq!(model.git.and_then(|g| g.changes), changes);
-    assert!(effects.is_empty());
 }
 
 #[test]
@@ -174,3 +147,5 @@ fn no_git_when_the_pane_is_too_short_for_the_preview() {
     };
     assert!(update(short, Msg::Loaded(windows(true))).1.is_empty());
 }
+
+mod git;
