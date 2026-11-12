@@ -52,11 +52,13 @@ pub struct Pane {
     pub active: bool,
     pub last: bool,
     pub window_active: bool,
+    /// A client shows the pane's session.
+    pub attached: bool,
 }
 
 /// The `list-panes -F` format that [`parse`] reads.
 pub const FORMAT: &str = "#{pane_id}\t#{session_name}\t#{window_index}\t#{pane_index}\t#{window_id}\t\
-                          #{@cts_sidebar}\t#{pane_active}\t#{pane_last}\t#{window_active}\t#{session_windows}\t#{automatic-rename}\t#{window_name}";
+                          #{@cts_sidebar}\t#{pane_active}\t#{pane_last}\t#{window_active}\t#{session_windows}\t#{session_attached}\t#{automatic-rename}\t#{window_name}";
 
 /// Parses `list-panes -F FORMAT` output, skipping malformed lines.
 pub fn parse(output: &str) -> Vec<Pane> {
@@ -65,13 +67,14 @@ pub fn parse(output: &str) -> Vec<Pane> {
 
 fn parse_line(line: &str) -> Option<Pane> {
     // The window name is last and takes the rest of the line, because a name may contain a tab.
-    let fields: Vec<&str> = line.splitn(12, '\t').collect();
-    let [fields @ .., automatic_rename, window_name] = fields.as_slice() else {
+    let fields: Vec<&str> = line.splitn(13, '\t').collect();
+    let [fields @ .., attached, automatic_rename, window_name] = fields.as_slice() else {
         return None;
     };
     Some(Pane {
         window_name: (*window_name).to_owned(),
         window_named: *automatic_rename == "0",
+        attached: *attached != "0",
         ..parse_fields(fields)?
     })
 }
@@ -106,6 +109,7 @@ fn parse_fields(fields: &[&str]) -> Option<Pane> {
         active: *active == "1",
         last: *last == "1",
         window_active: *window_active == "1",
+        attached: false,
     })
 }
 
@@ -146,6 +150,7 @@ pub mod fixture {
             active: false,
             last: false,
             window_active: true,
+            attached: true,
         }
     }
 }

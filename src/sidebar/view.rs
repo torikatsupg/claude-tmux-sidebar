@@ -5,14 +5,15 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
+use super::preview::Mode;
 use super::rows::{self, Row};
-use super::theme::Theme;
 use super::update::Model;
 use crate::i18n::Messages;
 use crate::listing::GroupName;
 use crate::session::Status;
 use crate::text::truncate;
 
+mod preview;
 mod session;
 mod session_name;
 mod window;
@@ -49,25 +50,29 @@ pub fn lines(model: &Model, messages: &Messages, width: u16, height: u16) -> Vec
         .into_iter()
         .chain(body)
         .chain(std::iter::repeat_n(Line::default(), filler))
-        .chain(model.help.then(|| help(messages, theme)))
+        .chain(preview::block(model, width, height))
+        .chain(model.help.then(|| help(model, messages)))
         .collect()
 }
 
-/// ` ⏎ jump  j/k move  q close`: bold keys, muted labels.
-fn help(messages: &Messages, theme: &Theme) -> Line<'static> {
-    let spans = messages
+/// ` ⏎ jump  j/k move  q close`, and the popup preview's key: bold keys, muted labels.
+fn help(model: &Model, messages: &Messages) -> Line<'static> {
+    let popup =
+        (model.preview.mode == Mode::Popup).then(|| (model.preview.key_label(), messages.preview));
+    let keys = messages
         .help
         .iter()
-        .enumerate()
-        .flat_map(|(i, (key, label))| {
-            let gap = if i == 0 { "" } else { "  " };
-            [
-                Span::raw(gap),
-                Span::styled(*key, Modifier::BOLD),
-                Span::raw(" "),
-                Span::styled(*label, theme.muted),
-            ]
-        });
+        .map(|&(key, label)| (key.to_owned(), label))
+        .chain(popup);
+    let spans = keys.enumerate().flat_map(|(i, (key, label))| {
+        let gap = if i == 0 { "" } else { "  " };
+        [
+            Span::raw(gap),
+            Span::styled(key, Modifier::BOLD),
+            Span::raw(" "),
+            Span::styled(label, model.theme.muted),
+        ]
+    });
     Line::from(spans.collect::<Vec<_>>())
 }
 

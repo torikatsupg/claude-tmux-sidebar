@@ -194,4 +194,5 @@ fn a_redundant_sidebar_removes_itself() {
     );
 }
 
+mod preview;
 mod windows;

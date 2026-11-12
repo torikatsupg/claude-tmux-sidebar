@@ -20,7 +20,8 @@ fn picks_the_last_main_thread_assistant_entry() {
         latest(&text),
         Some(Latest {
             branch: "main".to_owned(),
-            usage: Some(used(100_000))
+            usage: Some(used(100_000)),
+            ..Latest::default()
         })
     );
     assert_eq!(latest("nothing"), None);
@@ -58,7 +59,8 @@ fn a_compaction_after_the_last_assistant_entry_leaves_the_context_unknown() {
         latest(&text),
         Some(Latest {
             branch: "after".to_owned(),
-            usage: None
+            usage: None,
+            ..Latest::default()
         })
     );
 }
@@ -74,7 +76,8 @@ fn an_assistant_entry_after_a_compaction_wins() {
         latest(&text),
         Some(Latest {
             branch: "new".to_owned(),
-            usage: Some(used(20_000))
+            usage: Some(used(20_000)),
+            ..Latest::default()
         })
     );
 }
@@ -91,7 +94,8 @@ fn only_a_main_thread_boundary_entry_counts_as_a_compaction() {
         latest(&text),
         Some(Latest {
             branch: "main".to_owned(),
-            usage: Some(used(100_000))
+            usage: Some(used(100_000)),
+            ..Latest::default()
         })
     );
 }

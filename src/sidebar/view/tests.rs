@@ -7,6 +7,7 @@ use crate::session::transcript::{Latest, Usage};
 use crate::sidebar::rows::RowKey;
 use crate::sidebar::selection::Selection;
 use crate::sidebar::snapshot::Snapshot;
+use crate::sidebar::theme::Theme;
 use crate::text;
 use crate::tmux::pane::Pane;
 use crate::tmux::pane::fixture::pane;
@@ -135,6 +136,7 @@ fn busy_claude(windows: u32, tokens: Option<u64>) -> Claude {
                 tokens,
                 model: "claude-opus-4-6".to_owned(),
             }),
+            ..Latest::default()
         }),
     }
 }
@@ -182,4 +184,5 @@ mod colors;
 mod context_window;
 mod indent;
 mod label;
+mod preview;
 mod window;

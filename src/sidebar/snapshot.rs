@@ -25,6 +25,8 @@ pub struct Snapshot {
     pub focus: Option<Pane>,
     /// The sidebar pane itself has the focus.
     pub sidebar_active: bool,
+    /// The list is in front of the user: a popup, or a sidebar with the focus in a window a client shows.
+    pub focused: bool,
     /// This sidebar should go: its window has no real pane left, or an older sidebar (concurrent hooks can add two).
     pub redundant: bool,
     /// Each tmux session's current window.
@@ -96,6 +98,7 @@ pub fn from_parts(rows: Vec<Row>, panes: &[Pane], me: Option<PaneId>, popup: boo
         window,
         focus: window.and_then(|w| pane::focused(panes, w)).cloned(),
         sidebar_active: !popup && mine.is_some_and(|p| p.active),
+        focused: popup || mine.is_some_and(|p| p.active && p.window_active && p.attached),
         redundant: !popup && mine.is_some_and(|p| redundant(panes, p)),
         session_windows: panes
             .iter()
@@ -144,13 +147,33 @@ mod tests {
     }
 
     #[test]
+    fn a_sidebar_is_focused_only_with_the_focus_on_a_shown_window() {
+        let focused =
+            |me: Pane| from_parts(vec![], &[me.clone(), pane(1, 0)], Some(me.id), false).focused;
+        let active = Pane {
+            active: true,
+            ..sidebar(5)
+        };
+        assert!(focused(active.clone()));
+        assert!(!focused(sidebar(5)));
+        assert!(!focused(Pane {
+            window_active: false,
+            ..active.clone()
+        }));
+        assert!(!focused(Pane {
+            attached: false,
+            ..active
+        }));
+    }
+
+    #[test]
     fn popups_never_count_as_active_or_redundant() {
         let origin = Pane {
             active: true,
             ..pane(1, 0)
         };
         let snapshot = from_parts(vec![], std::slice::from_ref(&origin), Some(origin.id), true);
-        assert!(!snapshot.sidebar_active && !snapshot.redundant);
+        assert!(!snapshot.sidebar_active && !snapshot.redundant && snapshot.focused);
         assert_eq!(snapshot.focus.map(|p| p.id), Some(origin.id));
     }
 }

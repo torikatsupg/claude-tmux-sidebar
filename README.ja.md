@@ -49,9 +49,12 @@ tmux で Claude Code を何本も並行して動かしていると、どれが�
 | `j` / `k` / `g` / `G` | 選択移動 |
 | `n` / `p` | 次 / 前の完了・承認待ちの Claude を選択 |
 | `Enter` / クリック | そのペイン（ウィンドウ行ならそのウィンドウ、セッション行ならその tmux セッション）へ移動 |
+| `Space` | `@cts_preview popup` のとき、選択行のペインをポップアップで表示（`Escape` で閉じる）。既定のキーで、`@cts_preview_key` で変えられる |
 | `q` | 閉じる |
 
 セッション・ウィンドウ・ペインは tmux と同じ順に並びます。選択行は今フォーカスしているペインに追従します。
+
+サイドバーにフォーカスがあるときは、一覧の下に選択行が最後に出したものをプレビューします。移動する前に、その Claude が何を待っているのか、何を返したのかを確かめられます。Claude の行では、セッションの transcript から読んだ Claude の最後の返答の末尾を出します（コードフェンスと見出しの `#` は省きます）。承認待ちのときは、代わりに Claude が求めていること（ツールと、そのコマンド・ファイル・質問）を出します。Claude のいないウィンドウの行では、ペインの画面の末尾を色を落として出します。下端に 2 本の線で挟んだ入力欄があれば、その下の行ごと省きます。どちらも行を切らずにサイドバーの幅で折り返します。プレビューの上の線には行の名前（`セッション/名前`）が入り、色は tmux の `pane-border-style` に合わせます。フォーカスが無いときは選択行が今いるペインに追従していて新しく見せるものが無いので、プレビューは出さず、一覧が今までどおり全体を使います。表示はカーソルについて切り替わり、一覧と同じ間隔で更新します。高さはサイドバーの 3 分の 1 まで（本文は 10 行まで）で、サイドバーが低すぎるときは出しません。一覧が収まらなければ、その上でスクロールします。Claude のいない tmux セッションの行では何も出しません。
 
 ## 設定
 
@@ -66,6 +69,8 @@ set -g @cts_prev_key C-p
 set -g @cts_default off       # tmux 起動時に開いておくか
 set -g @cts_lang ja           # en / ja
 set -g @cts_help on           # 下端のキー操作ヘルプを表示
+set -g @cts_preview pane      # 選択行のペインのプレビュー: pane（一覧の下）/ popup（キーで開く）/ off
+set -g @cts_preview_key Space # popup のキー: Space か、一覧で使っていない 1 文字
 set -g @cts_label auto        # 行の並べ方: auto（セッション > ウィンドウ > Claude）/ dir（平ら）/ window（#I:#W）
 set -g @cts_single_window inline  # auto のとき、セッションに 1 つだけの名前付きウィンドウ: inline / lines
 set -g @cts_all_windows off   # Claude のいないウィンドウも一覧に出す
@@ -78,6 +83,8 @@ set -g @cts_context_windows 'claude-opus-5-5=1000000'  # モデルごとの cont
 ```
 
 tmux が既に割り当てているキー（例: `C-b` は `send-prefix`）を指定すると、プラグイン側の割り当てで上書きされます。
+
+`@cts_preview popup` にすると一覧の下には出さず、キーを押したときに選択行のペインの画面を色つきで tmux のポップアップに出します。キーは下端のヘルプにも出ます。一覧のポップアップ（`prefix + B`）の中ではポップアップを重ねて開けないので、`popup` でも一覧の下に出します。`@cts_preview off` にすると今までどおりの表示に戻ります。`@cts_preview_key` に一覧のキー（`j` `k` `g` `G` `n` `p` `l` `q` `r`）を指定すると無視して `Space` を使います。`Ctrl` や `Alt` と一緒に押しても開きません。これらの設定はサイドバーを開いたときに読みます。
 
 `@cts_label window` にすると、各行にはディレクトリとブランチの代わりに tmux のウィンドウを `番号:名前` で出します。ウィンドウ名を変えれば、次の更新で新しい名前になります。tmux の外で動いているセッションはディレクトリのままです。
 
@@ -181,7 +188,7 @@ gh attestation verify ~/.tmux/plugins/claude-tmux-sidebar/bin/claude-tmux-sideba
 
 ## プライバシー
 
-データは手元のマシンから出ません。各 Claude セッションの状態は `~/.cache/claude-tmux-sidebar/<session_id>.json` に本人だけが読める権限で保存され、セッションが終わると消えます。中身はセッション ID・作業ディレクトリ・ツール名・tmux ペイン・Claude のプロセス ID・セッションの transcript のパス・最後のプロンプトの先頭 200 文字です。git ブランチと context の使用率はサイドバーがその transcript の末尾から読み取り、保存はしません。
+データは手元のマシンから出ません。各 Claude セッションの状態は `~/.cache/claude-tmux-sidebar/<session_id>.json` に本人だけが読める権限で保存され、セッションが終わると消えます。中身はセッション ID・作業ディレクトリ・ツール名・tmux ペイン・Claude のプロセス ID・セッションの transcript のパス・最後のプロンプトの先頭 200 文字です。git ブランチと context の使用率、プレビューに出す Claude の最後の返答と承認待ちのツールは、サイドバーがその transcript の末尾から読み取り、保存はしません。
 
 デバッグ用に `CTS_DEBUG=1` を付けて Claude を起動すると、hook の生 payload が `~/.cache/claude-tmux-sidebar/debug.log` に残ります。**このログにはプロンプトやツールの入力がそのまま入る**ので、使い終わったら消し、共有する前に中身を確認してください。
 

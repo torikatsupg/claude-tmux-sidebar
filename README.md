@@ -49,9 +49,12 @@ Each session shows its directory and git branch, with the tool in use and how lo
 | `j` / `k` / `g` / `G` | Move the selection |
 | `n` / `p` | Select the next / previous done or waiting Claude |
 | `Enter` / click | Go to that pane (or that window or tmux session, on a window or session row) |
+| `Space` | With `@cts_preview popup`, show the selected pane in a popup (`Escape` closes it). The default key; set another with `@cts_preview_key` |
 | `q` | Close |
 
 Sessions, windows and panes are listed in tmux's own order. The selection follows the pane you are focused on.
+
+While the sidebar has the focus, a preview below the list shows what the selected row last said, so you can see what a Claude is waiting for or what it answered before you go there. For a Claude row it is the end of Claude's last reply, read from the session's transcript (code fences and heading marks dropped); while the session waits for you, it is what Claude asks for instead: the tool and its command, file or question. For a window without Claude it is the end of the pane's screen as plain text, leaving out an input box framed by two rules at the bottom and the lines below it. Lines wrap to the sidebar width instead of being cut. The rule above the preview names the row (`session/name`) in the color of tmux's `pane-border-style`. Without the focus, the selection follows the pane you are in, so there is nothing new to preview, and the list takes the full height as before. The preview follows the cursor and refreshes with the list. It takes at most a third of the sidebar (10 lines of text), and none when the sidebar is too short; the list scrolls above it. A tmux session row without Claude has nothing to preview.
 
 ## Options
 
@@ -66,6 +69,8 @@ set -g @cts_prev_key C-p
 set -g @cts_default off       # open the sidebar when tmux starts
 set -g @cts_lang en           # en / ja
 set -g @cts_help on           # show the key help at the bottom
+set -g @cts_preview pane      # preview the selected pane: pane (below the list) / popup (on a key) / off
+set -g @cts_preview_key Space # the key for popup: Space or one character not used by the list
 set -g @cts_label auto        # rows: auto (sessions > windows > Claude) / dir (flat) / window (#I:#W)
 set -g @cts_single_window inline  # with auto, a named window alone in its session: inline / lines
 set -g @cts_all_windows off   # also list windows without Claude
@@ -78,6 +83,8 @@ set -g @cts_context_windows 'claude-opus-5-5=1000000'  # context window size per
 ```
 
 Avoid keys tmux already binds (e.g. `C-b` is `send-prefix`): the plugin's binding replaces them.
+
+With `@cts_preview popup`, the preview is not drawn under the list; the key shows the selected pane's screen, with its colors, in a tmux popup instead, and the key help lists it. In the list popup (`prefix + B`), where tmux cannot open a second popup, `popup` shows the preview under the list. `@cts_preview off` draws the sidebar as before. A `@cts_preview_key` that is one of the list's keys (`j`, `k`, `g`, `G`, `n`, `p`, `l`, `q`, `r`) is ignored in favor of `Space`, and the key opens nothing when pressed with `Ctrl` or `Alt`. The sidebar reads these options when it opens.
 
 With `@cts_label window`, each row shows its tmux window as `index:name` instead of the directory and branch, and follows a renamed window on the next refresh. Sessions outside tmux keep the directory.
 
@@ -181,7 +188,7 @@ Restart running Claude Code sessions to pick up the hooks.
 
 ## Privacy
 
-Everything stays on your machine. Each Claude session's status is kept in `~/.cache/claude-tmux-sidebar/<session_id>.json`, readable only by you and removed when the session ends. It holds the session ID, working directory, tool name, tmux pane, Claude's process ID, the path of the session's transcript and the first 200 characters of your last prompt. The sidebar reads the git branch and context usage from the end of that transcript and does not store them.
+Everything stays on your machine. Each Claude session's status is kept in `~/.cache/claude-tmux-sidebar/<session_id>.json`, readable only by you and removed when the session ends. It holds the session ID, working directory, tool name, tmux pane, Claude's process ID, the path of the session's transcript and the first 200 characters of your last prompt. The sidebar reads the git branch, context usage and, for the preview, Claude's last reply and pending tool call from the end of that transcript, and does not store them.
 
 For debugging, start Claude with `CTS_DEBUG=1` to append raw hook payloads to `~/.cache/claude-tmux-sidebar/debug.log`. **The log contains your prompts and tool inputs** — delete it when done and check it before sharing.
 

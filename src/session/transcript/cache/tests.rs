@@ -19,6 +19,7 @@ fn usage(tokens: u64) -> Latest {
             tokens,
             model: String::new(),
         }),
+        ..Latest::default()
     }
 }
 

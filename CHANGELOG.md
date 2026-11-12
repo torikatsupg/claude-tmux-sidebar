@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - `cts status` prints how many Claude sessions are waiting, running and done (`◆2 ⠹1 ✓3`) for tmux's `status-right`; `--color` colors each count with the `@cts_color_*` options (#116).
 - `@cts_notify` (`off` by default, `tmux`, `os` or `all`) notifies you when a session starts waiting for you or is done, unless the client you use shows its window: a tmux message and a bell in its window, or a desktop notification with `osascript` / `notify-send`. The hooks read the value from a file the plugin writes when tmux loads it, so reload the config after a change (#116).
+- While the sidebar has the focus, a preview below the list shows what the selected row last said: the end of Claude's last reply from the transcript, what Claude asks for while it waits (the tool and its command, file or question), or the end of the screen for a window without Claude. Lines wrap to the sidebar width, and the rule above names the row in the color of tmux's pane borders. The preview follows the cursor, refreshes with the list and takes at most a third of the sidebar; without the focus the list keeps the full height. This is on by default, so the focused sidebar looks different after the update; `set -g @cts_preview off` brings back the list alone. `@cts_preview popup` shows the pane's screen in a tmux popup on a key instead (`Space`, set with `@cts_preview_key`) (#117).
 
 ## [0.12.1] - 2026-11-11
 

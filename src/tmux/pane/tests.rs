@@ -17,19 +17,20 @@ fn ids_round_trip() {
 #[test]
 fn parses_list_panes_output() {
     let panes = parse(
-        "%1\twork\t2\t0\t@4\t\t1\t0\t1\t3\t1\tvim\n%2\twork\t2\t1\t@4\t1\t0\t1\t1\t3\t0\ta\tb\nbroken",
+        "%1\twork\t2\t0\t@4\t\t1\t0\t1\t3\t1\t1\tvim\n%2\twork\t2\t1\t@4\t1\t0\t1\t1\t3\t0\t0\ta\tb\nbroken",
     );
     assert_eq!(panes.len(), 2);
     assert!(panes.first().is_some_and(|p| p.active
         && !p.sidebar
         && p.window_index == 2
         && p.window_name == "vim"
-        && p.session_windows == 3));
-    assert!(
-        panes
-            .get(1)
-            .is_some_and(|p| p.sidebar && p.last && p.window_named && p.window_name == "a\tb")
-    );
+        && p.session_windows == 3
+        && p.attached));
+    assert!(panes.get(1).is_some_and(|p| p.sidebar
+        && p.last
+        && p.window_named
+        && !p.attached
+        && p.window_name == "a\tb"));
 }
 
 #[test]
